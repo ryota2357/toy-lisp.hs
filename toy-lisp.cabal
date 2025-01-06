@@ -1,4 +1,4 @@
-cabal-version: 2.2
+cabal-version: 1.12
 
 -- This file has been generated from package.yaml by hpack version 0.37.0.
 --
@@ -6,29 +6,25 @@ cabal-version: 2.2
 
 name:           toy-lisp
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/toy-lisp#readme>
-homepage:       https://github.com/githubuser/toy-lisp#readme
-bug-reports:    https://github.com/githubuser/toy-lisp/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2025 Author name here
-license:        BSD-3-Clause
-license-file:   LICENSE
+description:    Please see the README on GitHub at <https://github.com/ryota2357/toy-lisp#readme>
+homepage:       https://github.com/ryota2357/toy-lisp.hs#readme
+bug-reports:    https://github.com/ryota2357/toy-lisp.hs/issues
+author:         ryota2357
+maintainer:     ryota2357
+copyright:      2025 ryota2357
+license:        MIT
 build-type:     Simple
 extra-source-files:
     README.md
-    CHANGELOG.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/toy-lisp
+  location: https://github.com/ryota2357/toy-lisp.hs
 
 library
   exposed-modules:
       Lib
   other-modules:
-      Paths_toy_lisp
-  autogen-modules:
       Paths_toy_lisp
   hs-source-dirs:
       src
@@ -40,8 +36,6 @@ library
 executable toy-lisp-exe
   main-is: Main.hs
   other-modules:
-      Paths_toy_lisp
-  autogen-modules:
       Paths_toy_lisp
   hs-source-dirs:
       app
@@ -55,8 +49,6 @@ test-suite toy-lisp-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_toy_lisp
-  autogen-modules:
       Paths_toy_lisp
   hs-source-dirs:
       test
