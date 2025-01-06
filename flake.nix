@@ -72,9 +72,15 @@
             nixfmt.enable = true;
             ormolu.enable = true;
             yamlfmt.enable = true;
+            prettier = {
+              enable = true;
+              includes = [ "*.md" ];
+            };
           };
           settings.global.excludes = [
             ".envrc"
+            "LICENSE"
+            "toy-lisp.cabal"
           ];
         };
       }
