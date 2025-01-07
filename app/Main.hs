@@ -1,6 +1,6 @@
-module Main (main) where
+module Main where
 
-import Lib
+import qualified ToyLisp (helloWorld)
 
 main :: IO ()
-main = helloWorld
+main = ToyLisp.helloWorld

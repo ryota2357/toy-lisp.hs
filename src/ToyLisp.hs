@@ -1,7 +1,4 @@
-module Lib
-  ( helloWorld,
-  )
-where
+module ToyLisp (helloWorld) where
 
 helloWorld :: IO ()
 helloWorld = putStrLn "Hello World!"

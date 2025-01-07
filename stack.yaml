@@ -1,4 +1,0 @@
-snapshot: lts-22.43 # GHC 9.6.6
-packages:
-  - .
-notify-if-nix-on-path: false
