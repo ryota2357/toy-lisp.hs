@@ -58,7 +58,6 @@
           settings.global.excludes = [
             ".envrc"
             "LICENSE"
-            "toy-lisp.cabal"
           ];
         };
       }
