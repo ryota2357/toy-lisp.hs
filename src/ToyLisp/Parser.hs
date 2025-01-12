@@ -51,8 +51,8 @@ parseAstNode = do
 
 parseList :: Parser AstNode
 parseList = do
+    assertCurrentCharP (== '(')
     startPos <- gets position
-    assertCurrentChar '('
     advance 1
     eatWhitespace
     nodes <- parseAstNodeList
@@ -69,8 +69,8 @@ parseList = do
 
 parseQuote :: Parser AstNode
 parseQuote = do
+    assertCurrentCharP (== '\'')
     startPos <- gets position
-    assertCurrentChar '\''
     advance 1
     eatWhitespace
     node <- parseAstNode
@@ -79,16 +79,16 @@ parseQuote = do
 
 parseInt :: Parser AstNode
 parseInt = do
-    starPos <- gets position
     assertCurrentCharP isDigit
+    starPos <- gets position
     number <- read <$> eatWhileP isDigit
     endPos <- gets position
     return $ IntNode (TextRange starPos endPos) number
 
 parseSymbol :: Parser AstNode
 parseSymbol = do
-    startPos <- gets position
     assertCurrentCharP isLetter
+    startPos <- gets position
     symbol <- eatWhileP isLetter
     endPos <- gets position
     return $ SymbolNode (TextRange startPos endPos) symbol
@@ -107,9 +107,6 @@ eatWhileP predicate = do
 
 eatWhitespace :: Parser ()
 eatWhitespace = void (eatWhileP isSpace)
-
-assertCurrentChar :: Char -> Parser ()
-assertCurrentChar c = assertCurrentCharP (== c)
 
 assertCurrentCharP :: (Char -> Bool) -> Parser ()
 assertCurrentCharP predicate = do
