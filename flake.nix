@@ -1,5 +1,5 @@
 {
-  description = "my project description";
+  description = "Learning Haskell by implementing a Lisp interpreter.";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
@@ -21,17 +21,14 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        hPkgs = pkgs.haskell.packages."ghc966"; # need to match Stackage LTS version from stack.yaml snapshot
+        hPkgs = pkgs.haskell.packages."ghc966"; # Stackage LTS 22.43
       in
       {
         devShells.default = pkgs.mkShellNoCC {
           packages = [
-            hPkgs.stylish-haskell # Haskell formatter
-            hPkgs.hlint # Haskell codestyle checker
-            # hPkgs.hoogle # Lookup Haskell documentation
-            hPkgs.haskell-language-server # LSP server for editor
-            # hPkgs.implicit-hie # auto generate LSP hie.yaml file from cabal
-            # hPkgs.retrie # Haskell refactoring tool
+            hPkgs.stylish-haskell
+            hPkgs.hlint
+            hPkgs.haskell-language-server
             pkgs.nil
             pkgs.sbcl
           ];
