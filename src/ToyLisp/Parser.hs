@@ -2,19 +2,20 @@
 
 module ToyLisp.Parser (parse) where
 
-import           Control.Exception      (assert)
 import           Control.Monad          (void)
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import           Control.Monad.State
 import           Data.Char              (isDigit, isLetter, isSpace)
-import           ToyLisp.Syntax         (Ast (..), AstNode (..), TextRange (..),
-                                         TextSize (..))
+import           ToyLisp.Syntax
+import           ToyLisp.Util           (assertAlways, safeHead)
 
 parse :: String -> Either TextSize Ast
 parse input = do
     (result, finalState) <- runParser parseAstNodeList input
-    assert (null finalState.input) (return $ Ast result)
+    if null finalState.input
+        then return $ Ast result
+        else throwError finalState.position
 
 data ParserState = ParserState
     { input    :: [Char]
@@ -30,8 +31,9 @@ runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState {
 
 parseAstNodeList :: Parser [AstNode]
 parseAstNodeList = do
+    eatWhitespace
     input <- gets input
-    if null input
+    if null input || head input == ')'
         then return []
         else do
             node <- parseAstNode
@@ -57,8 +59,8 @@ parseList = do
     eatWhitespace
     nodes <- parseAstNodeList
     eatWhitespace
-    curChar <- gets (head . input)
-    if curChar == ')'
+    curChar <- gets (safeHead . input)
+    if curChar == Just ')'
         then do
             advance 1
             endPos <- gets position
@@ -111,6 +113,6 @@ eatWhitespace = void (eatWhileP isSpace)
 assertCurrentCharP :: (Char -> Bool) -> Parser ()
 assertCurrentCharP predicate = do
     input <- gets input
-    let !_ = assert (not $ null input) ()
-    let !_ = assert (predicate $ head input) ()
+    let !_ = assertAlways (not $ null input) ()
+    let !_ = assertAlways (predicate $ head input) ()
     return ()
