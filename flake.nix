@@ -49,7 +49,6 @@
             cabal-fmt.enable = true;
             nixfmt.enable = true;
             stylish-haskell.enable = true;
-            yamlfmt.enable = true;
             prettier = {
               enable = true;
               includes = [ "*.md" ];
