@@ -25,9 +25,8 @@ newtype Ast = Ast [AstNode]
 data AstNode
     = SymbolNode TextRange T.Text
     | IntNode TextRange Integer
-    -- | NilNode TextRange
-    -- | TNode TextRange
+    | FloatNode TextRange Double
     | StringNode TextRange T.Text
     | ListNode TextRange [AstNode]
-    -- | DottedListnode TextRange AstNode AstNode
+    -- | DottedListNode TextRange AstNode AstNode
     deriving (Eq, Show)

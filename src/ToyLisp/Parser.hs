@@ -7,8 +7,9 @@ import           Control.Monad          (void)
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import           Control.Monad.State
-import           Data.Char              (isDigit, isLetter, isSpace)
+import           Data.Char              (isAscii, isSpace)
 import qualified Data.Text              as T
+import           Text.Read              (readMaybe)
 import           ToyLisp.Syntax
 import           ToyLisp.Util           (assertAlways, safeHead)
 
@@ -47,11 +48,10 @@ parseAstNode = do
     eatWhitespace
     p <- get
     case p.input of
-        '(' : _              -> parseList
-        '\'' : _             -> parseQuote
-        (c : _) | isDigit c  -> parseInt
-        (c : _) | isLetter c -> parseSymbol
-        _                    -> throwError p.position
+        '(' : _             -> parseList
+        '\'' : _            -> parseQuote
+        (c : _) | isIdent c -> parseIdent
+        _                   -> throwError p.position
 
 parseList :: Parser AstNode
 parseList = do
@@ -81,21 +81,17 @@ parseQuote = do
     endPos <- gets position
     return $ ListNode (TextRange startPos endPos) [SymbolNode (TextRange startPos (startPos + 1)) "quote", node]
 
-parseInt :: Parser AstNode
-parseInt = do
-    assertCurrentCharP isDigit
-    starPos <- gets position
-    number <- read <$> eatWhileP isDigit
-    endPos <- gets position
-    return $ IntNode (TextRange starPos endPos) number
-
-parseSymbol :: Parser AstNode
-parseSymbol = do
-    assertCurrentCharP isLetter
+parseIdent :: Parser AstNode
+parseIdent = do
+    assertCurrentCharP isIdent
     startPos <- gets position
-    symbol <- T.pack <$> eatWhileP isLetter
+    ident <- eatWhileP isIdent
     endPos <- gets position
-    return $ SymbolNode (TextRange startPos endPos) symbol
+    let range = TextRange startPos endPos
+    return $ case () of
+        _ | Just int <- readMaybe ident -> IntNode range int
+          | Just float <- readMaybe ident -> FloatNode range float
+          | otherwise -> SymbolNode range (T.pack ident)
 
 ----------------------
 
@@ -111,6 +107,9 @@ eatWhileP predicate = do
 
 eatWhitespace :: Parser ()
 eatWhitespace = void (eatWhileP isSpace)
+
+isIdent :: Char -> Bool
+isIdent c = isAscii c && notElem c [' ', '"', '(', ')', '\'']
 
 assertCurrentCharP :: (Char -> Bool) -> Parser ()
 assertCurrentCharP predicate = do

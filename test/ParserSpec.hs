@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module ParserSpec (spec) where
 
@@ -20,19 +20,45 @@ spec = do
             it "multiple letter symbols" $
                 parse "abc" `shouldBe` Right (Ast [SymbolNode (TextRange 0 3) "abc"])
 
-            -- it "symbols with numbers" $ do
-            --     parse "a1b2c3" `shouldBe` Right (Ast [SymbolNode (TextRange 0 5) "a1b2c3"])
-                -- parse "123abc" `shouldBe` Right (Ast [SymbolNode (TextRange 0 6) "123abc"])
+            it "symbols with numbers" $ do
+                parse "a1b2c3" `shouldBe` Right (Ast [SymbolNode (TextRange 0 6) "a1b2c3"])
+                parse "123abc" `shouldBe` Right (Ast [SymbolNode (TextRange 0 6) "123abc"])
+
+            it "symbols with special characters" $ do
+                parse "+-*/" `shouldBe` Right (Ast [SymbolNode (TextRange 0 4) "+-*/"])
+                parse "<=>!" `shouldBe` Right (Ast [SymbolNode (TextRange 0 4) "<=>!"])
 
         describe "integer" $ do
+            it "zero" $
+                parse "0" `shouldBe` Right (Ast [IntNode (TextRange 0 1) 0])
+
             it "positive integers" $
                 parse "42" `shouldBe` Right (Ast [IntNode (TextRange 0 2) 42])
 
-            it "zero starting integers" $
+            it "negative integers" $
+                parse "-42" `shouldBe` Right (Ast [IntNode (TextRange 0 3) (-42)])
+
+            it "integers with zero starting" $
                 parse "0123" `shouldBe` Right (Ast [IntNode (TextRange 0 4) 123])
 
-            -- it "negative integers" $
-            --     parse "-42" `shouldBe` Right (Ast [IntNode (TextRange 0 3) (-42)])
+        describe "float" $ do
+            it "zero" $
+                parse "0.0" `shouldBe` Right (Ast [FloatNode (TextRange 0 3) 0.0])
+
+            it "positive floats" $
+                parse "42.0" `shouldBe` Right (Ast [FloatNode (TextRange 0 4) 42.0])
+
+            it "negative floats" $
+                parse "-42.0" `shouldBe` Right (Ast [FloatNode (TextRange 0 5) (-42.0)])
+
+            it "floats with zero starting" $
+                parse "0123.0" `shouldBe` Right (Ast [FloatNode (TextRange 0 6) 123.0])
+
+            -- it "floats with no integer part" $
+            --     parse ".42" `shouldBe` Right (Ast [FloatNode (TextRange 0 3) 0.42])
+            --
+            -- it "floats with no decimal part" $
+            --     parse "42." `shouldBe` Right (Ast [FloatNode (TextRange 0 3) 42.0])
 
         describe "list" $ do
             it "empty list" $
