@@ -1,5 +1,6 @@
 module ToyLisp.Syntax where
 
+import qualified Data.Text as T
 newtype TextSize = TextSize Int deriving (Eq, Num)
 
 instance Show TextSize where
@@ -20,11 +21,11 @@ newtype Ast = Ast [AstNode]
     deriving (Eq, Show)
 
 data AstNode
-    = SymbolNode TextRange String
+    = SymbolNode TextRange T.Text
     | IntNode TextRange Integer
-    -- | StringNode TextRange String
     -- | NilNode TextRange
     -- | TNode TextRange
+    | StringNode TextRange T.Text
     | ListNode TextRange [AstNode]
     -- | DottedListnode TextRange AstNode AstNode
     deriving (Eq, Show)

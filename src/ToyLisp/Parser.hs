@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module ToyLisp.Parser (parse) where
 
@@ -7,6 +8,7 @@ import           Control.Monad.Except
 import           Control.Monad.Identity
 import           Control.Monad.State
 import           Data.Char              (isDigit, isLetter, isSpace)
+import qualified Data.Text              as T
 import           ToyLisp.Syntax
 import           ToyLisp.Util           (assertAlways, safeHead)
 
@@ -91,7 +93,7 @@ parseSymbol :: Parser AstNode
 parseSymbol = do
     assertCurrentCharP isLetter
     startPos <- gets position
-    symbol <- eatWhileP isLetter
+    symbol <- T.pack <$> eatWhileP isLetter
     endPos <- gets position
     return $ SymbolNode (TextRange startPos endPos) symbol
 
