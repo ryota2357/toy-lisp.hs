@@ -20,7 +20,7 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup devShell
+      - name: Set up devShell
         run: nix develop
 
       - name: Run spec tests
