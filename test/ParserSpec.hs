@@ -114,7 +114,7 @@ spec = do
             parse "(" `shouldBe` Left (SyntaxError (TextRange 1 2) "Expected ')'")
 
         it "missing opening parenthesis" $
-            parse ")" `shouldBe` Left (SyntaxError (TextRange 0 1) "Unexpected character")
+            parse ")" `shouldBe` Left (SyntaxError (TextRange 0 1) "Unexpected character: )")
 
         it "empty list with extra closing parenthesis" $
-            parse "())" `shouldBe` Left (SyntaxError (TextRange 2 3) "Unexpected character")
+            parse "())" `shouldBe` Left (SyntaxError (TextRange 2 3) "Unexpected character: )")

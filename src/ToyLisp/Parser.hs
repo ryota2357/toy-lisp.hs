@@ -8,7 +8,7 @@ import           Control.Monad          (void)
 import           Control.Monad.Except   (ExceptT, MonadError, runExceptT,
                                          throwError)
 import           Control.Monad.Identity (Identity, runIdentity)
-import           Control.Monad.State    (StateT, get, gets, modify, runStateT)
+import           Control.Monad.State    (StateT, gets, modify, runStateT)
 import           Data.Char              (isAscii, isSpace)
 import qualified Data.Text              as T
 import           Text.Read              (readMaybe)
@@ -22,7 +22,12 @@ parse input = do
     (result, finalState) <- runParser parseAstNodeList input
     if null finalState.input
         then return $ Ast result
-        else throwSyntaxError finalState.position "Unexpected character"
+        else throwSyntaxError finalState.position ("Unexpected character: " <> T.pack [head finalState.input])
+    where
+        runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState
+            { input = str
+            , position = TextSize 0
+            }
 
 data ParserState = ParserState
     { input    :: [Char]
@@ -31,13 +36,34 @@ data ParserState = ParserState
 
 type Parser = StateT ParserState (ExceptT SyntaxError Identity)
 
-runParser :: Parser a -> String -> Either SyntaxError (a, ParserState)
-runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState { input = str, position = TextSize 0 }
-
 throwSyntaxError :: MonadError SyntaxError m => TextSize -> T.Text -> m a
 throwSyntaxError pos msg = throwError $ SyntaxError (TextRange pos (pos + 1)) msg
 
-----------------------
+advance :: Int -> Parser ()
+advance n = modify $ \p -> ParserState
+    { input = drop n p.input
+    , position = p.position + TextSize n
+    }
+
+eatWhileP :: (Char -> Bool) -> Parser String
+eatWhileP predicate = do
+    input <- gets input
+    let token = takeWhile predicate input
+    advance (length token)
+    return token
+
+eatWhitespace :: Parser ()
+eatWhitespace = void (eatWhileP isSpace)
+
+isIdentChar :: Char -> Bool
+isIdentChar c = isAscii c && notElem c [' ', '"', '(', ')', '\'']
+
+assertCurrentCharP :: (Char -> Bool) -> Parser ()
+assertCurrentCharP predicate = do
+    input <- gets input
+    let !_ = assertAlways (not $ null input) ()
+    let !_ = assertAlways (predicate $ head input) ()
+    return ()
 
 parseAstNodeList :: Parser [AstNode]
 parseAstNodeList = do
@@ -53,12 +79,15 @@ parseAstNodeList = do
 parseAstNode :: Parser AstNode
 parseAstNode = do
     eatWhitespace
-    p <- get
-    case p.input of
-        '(' : _             -> parseList
-        '\'' : _            -> parseQuote
-        (c : _) | isIdent c -> parseIdent
-        _                   -> throwSyntaxError p.position "Unexpected character"
+    gets (safeHead . input) >>= \case
+        Just '(' -> parseList
+        Just '\'' -> parseQuote
+        Just c | isIdentChar c -> parseIdent
+        mc -> do
+            curPos <- gets position
+            throwSyntaxError curPos (case mc of
+                    Just c  -> "Unexpected character: " <> T.pack [c]
+                    Nothing -> "Unexpected end of input")
 
 parseList :: Parser AstNode
 parseList = do
@@ -90,37 +119,12 @@ parseQuote = do
 
 parseIdent :: Parser AstNode
 parseIdent = do
-    assertCurrentCharP isIdent
+    assertCurrentCharP isIdentChar
     startPos <- gets position
-    ident <- eatWhileP isIdent
+    ident <- eatWhileP isIdentChar
     endPos <- gets position
     let range = TextRange startPos endPos
     return $ case () of
         _ | Just int <- readMaybe ident -> IntNode range int
           | Just float <- readMaybe ident -> FloatNode range float
           | otherwise -> SymbolNode range (T.pack ident)
-
-----------------------
-
-advance :: Int -> Parser ()
-advance n = modify $ \p -> ParserState { input = drop n p.input, position = p.position + TextSize n }
-
-eatWhileP :: (Char -> Bool) -> Parser String
-eatWhileP predicate = do
-    input <- gets input
-    let token = takeWhile predicate input
-    advance (length token)
-    return token
-
-eatWhitespace :: Parser ()
-eatWhitespace = void (eatWhileP isSpace)
-
-isIdent :: Char -> Bool
-isIdent c = isAscii c && notElem c [' ', '"', '(', ')', '\'']
-
-assertCurrentCharP :: (Char -> Bool) -> Parser ()
-assertCurrentCharP predicate = do
-    input <- gets input
-    let !_ = assertAlways (not $ null input) ()
-    let !_ = assertAlways (predicate $ head input) ()
-    return ()
