@@ -21,7 +21,7 @@ jobs:
       - name: Cache Nix store
         uses: nix-community/cache-nix-action@v5
         with:
-          primary-key: nix-cache-${{ runner.os }}-${{ hashFiles('**/*.nix') }}
+          primary-key: nix-cache-${{ runner.os }}-${{ hashFiles('**/*.nix', 'flake.lock') }}
 
       - name: Set up devShell
         run: nix develop
