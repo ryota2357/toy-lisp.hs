@@ -19,7 +19,9 @@ library
   hs-source-dirs:  src
   exposed-modules:
     ToyLisp
+    ToyLisp.Analyzer
     ToyLisp.Parser
+    ToyLisp.Runtime
     ToyLisp.Syntax
 
   other-modules:   ToyLisp.Util
@@ -41,7 +43,10 @@ test-suite toy-lisp-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   type:               exitcode-stdio-1.0
-  other-modules:      ParserSpec
+  other-modules:
+    AnalyzerSpec
+    ParserSpec
+
   build-depends:
     , base      ^>=4.18.2.1
     , hspec     ^>=2.11.10

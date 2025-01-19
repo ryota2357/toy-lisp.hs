@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module ToyLisp.Syntax where
 
 import qualified Data.Text as T
@@ -34,3 +36,11 @@ data AstNode
     | ListNode TextRange [AstNode]
     -- | DottedListNode TextRange AstNode AstNode
     deriving (Eq, Show)
+
+getAstNodePosition :: AstNode -> TextRange
+getAstNodePosition = \case
+    SymbolNode range _ -> range
+    IntNode range _ -> range
+    FloatNode range _ -> range
+    StringNode range _ -> range
+    ListNode range _ -> range
