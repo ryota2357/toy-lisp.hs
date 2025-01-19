@@ -5,9 +5,9 @@
 module ToyLisp.Parser (parse) where
 
 import           Control.Monad          (void)
-import           Control.Monad.Except
-import           Control.Monad.Identity
-import           Control.Monad.State
+import           Control.Monad.Except   (ExceptT, runExceptT, throwError)
+import           Control.Monad.Identity (Identity, runIdentity)
+import           Control.Monad.State    (StateT, get, gets, modify, runStateT)
 import           Data.Char              (isAscii, isSpace)
 import qualified Data.Text              as T
 import           Text.Read              (readMaybe)
