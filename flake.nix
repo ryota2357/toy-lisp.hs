@@ -53,6 +53,7 @@
           };
           settings.global.excludes = [
             ".envrc"
+            ".github/workflows/ci.yaml"
             "LICENSE"
           ];
         };
