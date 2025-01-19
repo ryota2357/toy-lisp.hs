@@ -14,6 +14,15 @@ data TextRange = TextRange TextSize TextSize
 instance Show TextRange where
     show (TextRange (TextSize start) (TextSize end)) = show start ++ ".." ++ show end
 
+data SyntaxError = SyntaxError
+    { syntaxErrorPosition :: TextRange
+    , syntaxErrorMessage  :: T.Text
+    }
+    deriving (Eq)
+
+instance Show SyntaxError where
+    show (SyntaxError range message) = "Syntax error at " ++ show range ++ ": " ++ T.unpack message
+
 newtype Ast = Ast [AstNode]
     deriving (Eq, Show)
 

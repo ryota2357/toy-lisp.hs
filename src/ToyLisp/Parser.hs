@@ -5,31 +5,37 @@
 module ToyLisp.Parser (parse) where
 
 import           Control.Monad          (void)
-import           Control.Monad.Except   (ExceptT, runExceptT, throwError)
+import           Control.Monad.Except   (ExceptT, MonadError, runExceptT,
+                                         throwError)
 import           Control.Monad.Identity (Identity, runIdentity)
 import           Control.Monad.State    (StateT, get, gets, modify, runStateT)
 import           Data.Char              (isAscii, isSpace)
 import qualified Data.Text              as T
 import           Text.Read              (readMaybe)
-import           ToyLisp.Syntax
+import           ToyLisp.Syntax         (Ast (..), AstNode (..),
+                                         SyntaxError (..), TextRange (..),
+                                         TextSize (..))
 import           ToyLisp.Util           (assertAlways, safeHead)
 
-parse :: String -> Either TextSize Ast
+parse :: String -> Either SyntaxError Ast
 parse input = do
     (result, finalState) <- runParser parseAstNodeList input
     if null finalState.input
         then return $ Ast result
-        else throwError finalState.position
+        else throwSyntaxError finalState.position "Unexpected character"
 
 data ParserState = ParserState
     { input    :: [Char]
     , position :: TextSize
     }
 
-type Parser = StateT ParserState (ExceptT TextSize Identity)
+type Parser = StateT ParserState (ExceptT SyntaxError Identity)
 
-runParser :: Parser a -> String -> Either TextSize (a, ParserState)
+runParser :: Parser a -> String -> Either SyntaxError (a, ParserState)
 runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState { input = str, position = TextSize 0 }
+
+throwSyntaxError :: MonadError SyntaxError m => TextSize -> T.Text -> m a
+throwSyntaxError pos msg = throwError $ SyntaxError (TextRange pos (pos + 1)) msg
 
 ----------------------
 
@@ -52,7 +58,7 @@ parseAstNode = do
         '(' : _             -> parseList
         '\'' : _            -> parseQuote
         (c : _) | isIdent c -> parseIdent
-        _                   -> throwError p.position
+        _                   -> throwSyntaxError p.position "Unexpected character"
 
 parseList :: Parser AstNode
 parseList = do
@@ -69,7 +75,7 @@ parseList = do
             return $ ListNode (TextRange startPos endPos) nodes
         _ -> do
             curPos <- gets position
-            throwError curPos
+            throwSyntaxError curPos "Expected ')'"
 
 parseQuote :: Parser AstNode
 parseQuote = do

@@ -111,10 +111,10 @@ spec = do
 
     describe "parse error" $ do
         it "missing closing parenthesis" $
-            parse "(" `shouldBe` Left (TextSize 1)
+            parse "(" `shouldBe` Left (SyntaxError (TextRange 1 2) "Expected ')'")
 
         it "missing opening parenthesis" $
-            parse ")" `shouldBe` Left (TextSize 0)
+            parse ")" `shouldBe` Left (SyntaxError (TextRange 0 1) "Unexpected character")
 
         it "empty list with extra closing parenthesis" $
-            parse "())" `shouldBe` Left (TextSize 2)
+            parse "())" `shouldBe` Left (SyntaxError (TextRange 2 3) "Unexpected character")
