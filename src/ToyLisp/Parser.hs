@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings   #-}
 
@@ -61,13 +62,12 @@ parseList = do
     eatWhitespace
     nodes <- parseAstNodeList
     eatWhitespace
-    curChar <- gets (safeHead . input)
-    if curChar == Just ')'
-        then do
+    gets (safeHead . input) >>= \case
+        Just ')' -> do
             advance 1
             endPos <- gets position
             return $ ListNode (TextRange startPos endPos) nodes
-        else do
+        _ -> do
             curPos <- gets position
             throwError curPos
 
@@ -79,7 +79,8 @@ parseQuote = do
     eatWhitespace
     node <- parseAstNode
     endPos <- gets position
-    return $ ListNode (TextRange startPos endPos) [SymbolNode (TextRange startPos (startPos + 1)) "quote", node]
+    let quote = SymbolNode (TextRange startPos (startPos + 1)) "quote"
+    return $ ListNode (TextRange startPos endPos) [quote, node]
 
 parseIdent :: Parser AstNode
 parseIdent = do
