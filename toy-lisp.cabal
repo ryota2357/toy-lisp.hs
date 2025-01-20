@@ -20,6 +20,7 @@ library
   exposed-modules:
     ToyLisp
     ToyLisp.Analyzer
+    ToyLisp.Evaluator
     ToyLisp.Parser
     ToyLisp.Runtime
     ToyLisp.Syntax

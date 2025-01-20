@@ -8,3 +8,21 @@ data MacroInfo = MacroInfo
     , macroArgs :: [AstNode]
     , macroBody :: Ast
     } deriving (Show, Eq)
+
+data LispObject
+    = LispInt Integer
+    | LispFloat Double
+    | LispString T.Text
+    | LispList [LispObject]
+    -- | LispFunction ??
+    | LispNil
+    deriving ()
+
+data RuntimeError = RuntimeError
+    { runtimeErrorPosition :: TextRange
+    , runtimeErrorMessage  :: T.Text
+    }
+    deriving (Eq)
+
+instance Show RuntimeError where
+    show (RuntimeError range message) = "Runtime error at " ++ show range ++ ": " ++ T.unpack message
