@@ -37,8 +37,8 @@ data AstNode
     -- | DottedListNode TextRange AstNode AstNode
     deriving (Eq, Show)
 
-getAstNodePosition :: AstNode -> TextRange
-getAstNodePosition = \case
+astNodePosition :: AstNode -> TextRange
+astNodePosition = \case
     SymbolNode range _ -> range
     IntNode range _ -> range
     FloatNode range _ -> range

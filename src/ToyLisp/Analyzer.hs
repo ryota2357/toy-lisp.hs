@@ -6,7 +6,7 @@ module ToyLisp.Analyzer (analyseAst, expandMacro) where
 import           Data.Maybe      (catMaybes)
 import           ToyLisp.Runtime (MacroInfo (..))
 import           ToyLisp.Syntax  (Ast (..), AstNode (..), SyntaxError (..),
-                                  getAstNodePosition)
+                                  astNodePosition)
 
 analyseAst :: Ast -> Either SyntaxError (Ast, [MacroInfo])
 analyseAst (Ast nodes) = do
@@ -16,7 +16,7 @@ analyseAst (Ast nodes) = do
     where
         checkTopLevelNodes = mapM_ (\case
             (ListNode _ _) -> Right ()
-            node -> Left $ SyntaxError (getAstNodePosition node) "Top level expressions must be S-expressions")
+            node -> Left $ SyntaxError (astNodePosition node) "Top level expressions must be S-expressions")
         collectMacros = fmap catMaybes . mapM (\case
             (ListNode _ nodelist) -> case nodelist of
                 SymbolNode _ "macrodef" : SymbolNode _ name : ListNode _ args : body ->
