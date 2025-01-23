@@ -44,10 +44,7 @@ test-suite toy-lisp-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   type:               exitcode-stdio-1.0
-  other-modules:
-    AnalyzerSpec
-    ParserSpec
-
+  other-modules:      ParserSpec
   build-depends:
     , base      ^>=4.18.2.1
     , hspec     ^>=2.11.10
