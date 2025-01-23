@@ -10,6 +10,7 @@ import           Control.Monad.Except   (ExceptT, MonadError, runExceptT,
 import           Control.Monad.Identity (Identity, runIdentity)
 import           Control.Monad.State    (StateT, gets, modify, runStateT)
 import           Data.Char              (isAscii, isSpace)
+import           Data.Function          (fix)
 import qualified Data.Text              as T
 import           Text.Read              (readMaybe)
 import           ToyLisp.Syntax         (Ast (..), AstNode (..),
@@ -82,6 +83,7 @@ parseAstNode = do
     gets (safeHead . input) >>= \case
         Just '(' -> parseList
         Just '\'' -> parseQuote
+        Just '"' -> parseString
         Just c | isIdentChar c -> parseIdent
         mc -> do
             curPos <- gets position
@@ -116,6 +118,36 @@ parseQuote = do
     endPos <- gets position
     let quote = SymbolNode (TextRange startPos (startPos + 1)) "quote"
     return $ ListNode (TextRange startPos endPos) [quote, node]
+
+parseString :: Parser AstNode
+parseString = do
+    assertCurrentCharP (== '"')
+    startPos <- gets position
+    advance 1
+    str <- fix $ \loop -> do
+        str <- eatWhileP (\c -> c /= '"' && c /= '\\')
+        next <- gets (safeHead . input)
+        if next == Just '\\'
+            then do
+                advance 1
+                gets (safeHead . input) >>= \case
+                    Just c | c `elem` ['"', '\\'] -> do
+                        advance 1
+                        rest <- loop
+                        return $ str ++ [c] ++ rest
+                    Just _ -> do
+                        rest <- loop
+                        return $ str ++  rest
+                    Nothing -> return str
+            else return str
+    gets (safeHead . input) >>= \case
+        Just '"' -> do
+            advance 1
+            endPos <- gets position
+            return $ StringNode (TextRange startPos endPos) (T.pack str)
+        _ -> do
+            curPos <- gets position
+            throwSyntaxError curPos "Expected '\"'"
 
 parseIdent :: Parser AstNode
 parseIdent = do

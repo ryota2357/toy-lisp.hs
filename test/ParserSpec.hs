@@ -60,6 +60,28 @@ spec = do
             -- it "floats with no decimal part" $
             --     parse "42." `shouldBe` Right (Ast [FloatNode (TextRange 0 3) 42.0])
 
+        describe "string" $ do
+            let quote str = "\"" ++ str ++ "\""
+
+            it "empty string" $
+                parse (quote "") `shouldBe` Right (Ast [StringNode (TextRange 0 2) ""])
+
+            it "single character string" $ do
+                parse (quote " ") `shouldBe` Right (Ast [StringNode (TextRange 0 3) " "])
+                parse (quote "a") `shouldBe` Right (Ast [StringNode (TextRange 0 3) "a"])
+
+            it "multiple character string" $ do
+                parse (quote "abc") `shouldBe` Right (Ast [StringNode (TextRange 0 5) "abc"])
+                parse (quote " ab c ") `shouldBe` Right (Ast [StringNode (TextRange 0 8) " ab c "])
+
+            it "string with escaped quotes" $ do
+                parse (quote "\\\"")  `shouldBe` Right (Ast [StringNode (TextRange 0 4) "\""])
+                parse (quote "\\\\") `shouldBe` Right (Ast [StringNode (TextRange 0 4) "\\"])
+
+            it "string with unknown escape sequence" $ do
+                parse (quote "a\\nc") `shouldBe` Right (Ast [StringNode (TextRange 0 6) "anc"])
+                parse (quote "\\ ") `shouldBe` Right (Ast [StringNode (TextRange 0 4) " "])
+
         describe "list" $ do
             it "empty list" $
                 parse "()" `shouldBe` Right (Ast [ListNode (TextRange 0 2) []])
@@ -118,3 +140,9 @@ spec = do
 
         it "empty list with extra closing parenthesis" $
             parse "())" `shouldBe` Left (SyntaxError (TextRange 2 3) "Unexpected character: )")
+
+        it "unterminated string" $
+            parse "\"abc" `shouldBe` Left (SyntaxError (TextRange 4 5) "Expected '\"'")
+
+        it "unterminated escape sequence" $
+            parse "\"\\\"" `shouldBe` Left (SyntaxError (TextRange 3 4) "Expected '\"'")
