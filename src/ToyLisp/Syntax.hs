@@ -3,6 +3,7 @@
 module ToyLisp.Syntax where
 
 import qualified Data.Text as T
+import           GHC.Exts  (IsString (..))
 
 newtype TextSize = TextSize Int
     deriving (Eq, Ord, Num, Bounded)
@@ -25,11 +26,23 @@ data SyntaxError = SyntaxError
 instance Show SyntaxError where
     show (SyntaxError range message) = "Syntax error at " ++ show range ++ ": " ++ T.unpack message
 
+newtype Symbol = MkSymbolFromUpperText T.Text
+    deriving (Show, Eq, Ord)
+
+mkSymbol :: T.Text -> Symbol
+mkSymbol text = MkSymbolFromUpperText $ T.toUpper text
+
+unSymbol :: Symbol -> T.Text
+unSymbol (MkSymbolFromUpperText text) = text
+
+instance IsString Symbol where
+    fromString = mkSymbol . T.pack
+
 newtype Ast = Ast [AstNode]
     deriving (Eq, Show)
 
 data AstNode
-    = SymbolNode TextRange T.Text
+    = SymbolNode TextRange Symbol
     | IntNode TextRange Integer
     | FloatNode TextRange Double
     | StringNode TextRange T.Text

@@ -14,7 +14,7 @@ import qualified Data.Text              as T
 import           Text.Read              (readMaybe)
 import           ToyLisp.Syntax         (Ast (..), AstNode (..),
                                          SyntaxError (..), TextRange (..),
-                                         TextSize (..))
+                                         TextSize (..), mkSymbol)
 import           ToyLisp.Util           (assertAlways, safeHead)
 
 parse :: String -> Either SyntaxError Ast
@@ -127,4 +127,4 @@ parseIdent = do
     return $ case () of
         _ | Just int <- readMaybe ident -> IntNode range int
           | Just float <- readMaybe ident -> FloatNode range float
-          | otherwise -> SymbolNode range (T.pack ident)
+          | otherwise -> SymbolNode range (mkSymbol $ T.pack ident)
