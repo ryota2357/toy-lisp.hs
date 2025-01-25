@@ -1,6 +1,12 @@
 module Main where
 
-import qualified ToyLisp (helloWorld)
+import           ToyLisp.Evaluator (eval)
+import           ToyLisp.Parser    (parse)
 
 main :: IO ()
-main = ToyLisp.helloWorld
+main = do
+    case parse "(princ (+ 1 2))" of
+        Left err -> print err
+        Right ast -> do
+            !_ <- eval ast
+            putStrLn ""

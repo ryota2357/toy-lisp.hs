@@ -27,9 +27,10 @@ library
 
   other-modules:   ToyLisp.Util
   build-depends:
-    , base  ^>=4.18.2.1
-    , mtl   ^>=2.3.1
-    , text  ^>=2.1.2
+    , base        ^>=4.18.2.1
+    , containers  ^>=0.7
+    , mtl         ^>=2.3.1
+    , text        ^>=2.1.2
 
 executable toy-lisp
   import:         common-options
@@ -44,10 +45,14 @@ test-suite toy-lisp-test
   hs-source-dirs:     test
   main-is:            Spec.hs
   type:               exitcode-stdio-1.0
-  other-modules:      ParserSpec
+  other-modules:
+    EvaluatorSpec
+    ParserSpec
+
   build-depends:
     , base      ^>=4.18.2.1
     , hspec     ^>=2.11.10
+    , mtl       ^>=2.3.1
     , toy-lisp
 
   build-tool-depends: hspec-discover:hspec-discover
