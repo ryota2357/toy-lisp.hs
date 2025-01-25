@@ -24,11 +24,11 @@ parse input = do
     if null finalState.input
         then return $ Ast result
         else throwSyntaxError finalState.position ("Unexpected character: " <> T.pack [head finalState.input])
-    where
-        runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState
-            { input = str
-            , position = TextSize 0
-            }
+  where
+    runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState
+        { input = str
+        , position = TextSize 0
+        }
 
 data ParserState = ParserState
     { input    :: [Char]

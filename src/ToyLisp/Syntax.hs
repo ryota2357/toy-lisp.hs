@@ -20,8 +20,7 @@ instance Show TextRange where
 data SyntaxError = SyntaxError
     { syntaxErrorPosition :: TextRange
     , syntaxErrorMessage  :: T.Text
-    }
-    deriving (Eq)
+    } deriving (Eq)
 
 instance Show SyntaxError where
     show (SyntaxError range message) = "Syntax error at " ++ show range ++ ": " ++ T.unpack message
