@@ -30,7 +30,7 @@ library
     , base        ^>=4.19.2.0
     , containers  ^>=0.6.8
     , mtl         ^>=2.3.1
-    , text        ^>=2.1.2
+    , text        ^>=2.1.1
 
 executable toy-lisp
   import:         common-options

@@ -24,10 +24,7 @@
         hPkgs = pkgs.haskell.packages."ghc984"; # Stackage LTS 23.5
       in
       {
-        packages.default = hPkgs.callCabal2nix "toy-lisp" ./. {
-          text = hPkgs.text_2_1_2;
-          # containers = hPkgs.containers_0_7;
-        };
+        packages.default = hPkgs.callCabal2nix "toy-lisp" ./. { };
 
         devShells.default = pkgs.mkShellNoCC {
           packages = [

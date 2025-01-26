@@ -129,7 +129,7 @@ systemFunctionBindingsMap = M.fromList
                     LispFunction _ -> "<function>") arg
                 return $ Right arg
             args -> do
-                let argsNumText = T.show $ length args
+                let argsNumText = T.pack $ show $ length args
                 return $ Left $ "Invalid number of arguments for PRINC: " <> argsNumText
       )
     ]
