@@ -1,3 +1,5 @@
+# Haskell
+# https://github.com/github/gitignore/blob/2466a63306cb6953e079fde8aa0129cbb68435e7/Haskell.gitignore
 dist
 dist-*
 cabal-dev
@@ -22,4 +24,6 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 
+# Nix
 .direnv/
+result

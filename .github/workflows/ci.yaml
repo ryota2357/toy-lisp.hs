@@ -27,6 +27,9 @@ jobs:
       - name: Set up devShell
         run: nix develop
 
+      - name: Nix build
+        run: nix build
+
       - name: Run spec tests
         run: |
           nix develop --command cabal update
