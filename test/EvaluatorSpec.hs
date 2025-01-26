@@ -45,8 +45,10 @@ spec = do
             --     runEvalOutput ast `shouldBe` "(1 2 3)"
 
             it "nil" $ do
-               let ast = Ast [ListNode s [SymbolNode s "princ", SymbolNode s "nil"]]
-               runEvalOutput ast `shouldBe` "NIL"
+               let nil_ast = Ast [ListNode s [SymbolNode s "princ", SymbolNode s "nil"]]
+               runEvalOutput nil_ast `shouldBe` "NIL"
+               let lst_ast = Ast [ListNode s [SymbolNode s "princ", ListNode s []]]
+               runEvalOutput lst_ast `shouldBe` "NIL"
 
             it "t" $ do
                 let ast = Ast [ListNode s [SymbolNode s "princ", SymbolNode s "t"]]
