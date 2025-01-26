@@ -2,6 +2,15 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings   #-}
 
+-- Disables warnings for partial functions like:
+-- * head/tail/init/last (which fail on empty lists)
+-- * (!!) (which fails on out-of-bounds indices)
+-- * read/fromJust (which fail on invalid input)
+--
+-- We use these functions in a safe way (manually checking for empty lists, bounds, etc.)
+-- in this file, so we don't need to be warned about them.
+{-# OPTIONS_GHC -Wno-x-partial #-}
+
 module ToyLisp.Parser (parse) where
 
 import           Control.Monad          (void)
