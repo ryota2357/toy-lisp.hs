@@ -21,7 +21,7 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        hPkgs = pkgs.haskell.packages."ghc966"; # Stackage LTS 22.43
+        hPkgs = pkgs.haskell.packages."ghc984"; # Stackage LTS 23.5
       in
       {
         devShells.default = pkgs.mkShellNoCC {
