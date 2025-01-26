@@ -22,6 +22,7 @@ jobs:
         uses: nix-community/cache-nix-action@v5
         with:
           primary-key: nix-cache-${{ runner.os }}-${{ hashFiles('**/*.nix', 'flake.lock') }}
+          purge: true
 
       - name: Set up devShell
         run: nix develop
