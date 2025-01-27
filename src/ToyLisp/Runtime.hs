@@ -3,7 +3,6 @@
 
 module ToyLisp.Runtime where
 
-import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import           ToyLisp.Syntax  (Ast, AstNode, Symbol, TextRange)
@@ -23,20 +22,20 @@ data FunctionInfo = FunctionInfo
     } deriving (Show, Eq)
 
 data CallFrame = CallFrame
-    { valueBindings    :: Map Symbol LispObject
-    , functionBindings :: Map Symbol FunctionInfo
+    { valueBindings    :: M.Map Symbol LispObject
+    , functionBindings :: M.Map Symbol FunctionInfo
     , specialFrameInfo :: (SpecialFrame, Bool)
     , parentCallFrame  :: Maybe CallFrame
     } deriving (Show, Eq)
 
 data SpecialFrame = SpecialFrame
-    { specialBindings    :: Map Symbol LispObject
+    { specialBindings    :: M.Map Symbol LispObject
     , parentSpecialFrame :: Maybe SpecialFrame
     } deriving (Show, Eq)
 
 data GlobalBindings = GlobalBindings
-    { glovalValueBindings    :: Map Symbol LispObject
-    , glovalFunctionBindings :: Map Symbol FunctionInfo
+    { glovalValueBindings    :: M.Map Symbol LispObject
+    , glovalFunctionBindings :: M.Map Symbol FunctionInfo
     } deriving (Show, Eq)
 
 data Environment = Environment
