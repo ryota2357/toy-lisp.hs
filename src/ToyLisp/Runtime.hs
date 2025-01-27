@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE StrictData          #-}
 
 module ToyLisp.Runtime where
 
