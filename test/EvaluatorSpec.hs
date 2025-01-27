@@ -61,3 +61,19 @@ spec = do
                               , ListNode s [SymbolNode s "princ", IntNode s 2]
                               ]
                 runEvalOutput ast `shouldBe` "1a b2"
+
+        describe "princ error" $ do
+            it "no arguments" $ do
+                let ast = Ast [ListNode (TextRange 0 7) [SymbolNode (TextRange 1 6) "princ"]]
+                let (result, output) = runEval ast
+                output `shouldBe` ""
+                result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
+
+            it "too many arguments" $ do
+                let ast = Ast [ListNode (TextRange 0 11) [
+                                SymbolNode (TextRange 1 6) "princ",
+                                IntNode (TextRange 7 8) 1,
+                                IntNode (TextRange 9 10) 2]]
+                let (ret, output) = runEval ast
+                output `shouldBe` ""
+                ret `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
