@@ -26,7 +26,10 @@ instance Show SyntaxError where
     show (SyntaxError range message) = "Syntax error at " ++ show range ++ ": " ++ T.unpack message
 
 newtype Symbol = MkSymbolFromUpperText T.Text
-    deriving (Show, Eq, Ord)
+    deriving (Eq, Ord)
+
+instance Show Symbol where
+    show = ("Symbol " ++) . T.unpack . unSymbol
 
 mkSymbol :: T.Text -> Symbol
 mkSymbol text = MkSymbolFromUpperText $ T.toUpper text
