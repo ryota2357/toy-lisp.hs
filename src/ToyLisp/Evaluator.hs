@@ -71,10 +71,9 @@ evalNode = \case
                 Nothing  -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
     ListNode _ [] -> return $ LispList []
     ListNode _ (SymbolNode fnPos fnName : args) -> do
-        argValues <- mapM evalNode args
         case M.lookup fnName (systemFunctionBindingsMap @m) of
             Just fn -> do
-                result <- fn argValues
+                result <- fn args
                 case result of
                     Right val -> return val
                     Left err  -> throwRuntimeError fnPos err
@@ -87,37 +86,51 @@ systemValueBindingsMap = M.fromList
     , ("t", LispTrue)
     ]
 
-systemFunctionBindingsMap :: (EvalIO m) => M.Map Symbol ([LispObject] -> Evaluator m (Either T.Text LispObject))
+systemFunctionBindingsMap :: (EvalIO m) => M.Map Symbol ([AstNode] -> Evaluator m (Either T.Text LispObject))
 systemFunctionBindingsMap = M.fromList
-    [ ("+", \args -> return $ case args of
+    [ ("+", \args -> do
+        argValues <- mapM evalNode args
+        return $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a + b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a + b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a + b)
             [LispFloat a, LispInt b]   -> Right $ LispFloat (a + fromIntegral b)
-            _                          -> Left "Invalid arguments for +"
+            [_, _]                     -> Left "Arguments are not numbers"
+            _                          -> Left $ mkInvalidArgCountErrorText "+" args
       )
-    , ("-", \args -> return $ case args of
+    , ("-", \args -> do
+        argValues <- mapM evalNode args
+        return $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a - b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a - b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a - b)
             [LispFloat a, LispInt b]   -> Right $ LispFloat (a - fromIntegral b)
-            _                          -> Left "Invalid arguments for -"
+            [_, _]                     -> Left "Arguments are not numbers"
+            _                          -> Left $ mkInvalidArgCountErrorText "-" args
       )
-    , ("*", \args -> return $ case args of
+    , ("*", \args -> do
+        argValues <- mapM evalNode args
+        return $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a * b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a * b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a * b)
             [LispFloat a, LispInt b]   -> Right $ LispFloat (a * fromIntegral b)
-            _                          -> Left "Invalid arguments for *"
+            [_, _]                     -> Left "Arguments are not numbers"
+            _                          -> Left $ mkInvalidArgCountErrorText "*" args
       )
-    , ("/", \args -> return $ case args of
+    , ("/", \args -> do
+        argValues <- mapM evalNode args
+        return $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a `div` b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a / b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a / b)
             [LispFloat a, LispInt b]   -> Right $ LispFloat (a / fromIntegral b)
-            _                          -> Left "Invalid arguments for /"
+            [_, _]                     -> Left "Arguments are not numbers"
+            _                          -> Left $ mkInvalidArgCountErrorText "/" args
       )
-    , ("princ", \case
+    , ("princ", \args -> do
+        argValues <- mapM evalNode args
+        case argValues of
             [arg] -> do
                 lift $ lift $ writeOutput $ fix (\self -> \case
                     LispInt i      -> show i
@@ -129,9 +142,21 @@ systemFunctionBindingsMap = M.fromList
                     LispTrue       -> "T"
                     LispFunction _ -> "<function>") arg
                 return $ Right arg
-            args -> do
-                let argsNumText = T.pack $ show $ length args
-                return $ Left $ "Invalid number of arguments for PRINC: " <> argsNumText
+            _ -> return $ Left $ mkInvalidArgCountErrorText "princ" args
+      )
+    , ("quote", \args -> do
+        case args of
+            [arg] -> return $ Right $ fix (\quote -> \case
+                IntNode _ i -> LispInt i
+                FloatNode _ f -> LispFloat f
+                StringNode _ s -> LispString s
+                SymbolNode _ sym -> LispSymbol sym
+                ListNode _ nodes -> LispList $ map quote nodes
+                ) arg
+            _     -> return $ Left $ mkInvalidArgCountErrorText "quote" args
       )
     ]
-
+  where
+    mkInvalidArgCountErrorText fnName args = "Invalid number of arguments for " <> unSymbol fnName <> ": " <> argsCountText
+      where
+        argsCountText = T.pack $ show $ length args
