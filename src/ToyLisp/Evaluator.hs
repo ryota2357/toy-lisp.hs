@@ -9,6 +9,7 @@ import           Control.Monad.State  (StateT, get, lift, runStateT)
 import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
+import           System.IO            (hPutStr, stderr)
 import qualified ToyLisp.Runtime      as RT
 import           ToyLisp.Runtime      (CallFrame (..), Environment (..),
                                        GlobalBindings (..), LispObject (..),
@@ -19,10 +20,14 @@ import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
 class (Monad m) => EvalIO m where
     writeOutput :: String -> m ()
     writeOutputLn :: String -> m ()
-    writeOutputLn text = writeOutput $ text ++ "\n"
+    writeOutputLn = writeOutput . (++ "\n")
+    writeError :: String -> m ()
+    writeErrorLn :: String -> m ()
+    writeErrorLn = writeError . (++ "\n")
 
 instance EvalIO IO where
     writeOutput = putStr
+    writeError = hPutStr stderr
 
 eval :: (EvalIO m) => Ast -> m (Either RuntimeError Environment)
 eval (Ast nodes) = do

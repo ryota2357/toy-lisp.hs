@@ -13,6 +13,7 @@ newtype TestIO a = TestIO { runTestIO :: State String a }
 
 instance EvalIO TestIO where
     writeOutput str = TestIO $ modify (++ str)
+    writeError _ = error "Unexpected error output"
 
 runEval :: Ast -> (Either RuntimeError Environment, String)
 runEval ast = runState (runTestIO $ eval ast) ""
