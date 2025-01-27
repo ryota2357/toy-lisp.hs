@@ -123,6 +123,7 @@ systemFunctionBindingsMap = M.fromList
                     LispInt i      -> show i
                     LispFloat f    -> show f
                     LispString s   -> T.unpack s
+                    LispSymbol s -> T.unpack $ unSymbol s
                     LispList []    -> "NIL"
                     LispList xs    -> "(" ++ unwords (map self xs) ++ ")"
                     LispTrue       -> "T"

@@ -11,6 +11,7 @@ data LispObject
     = LispInt Integer
     | LispFloat Double
     | LispString T.Text
+    | LispSymbol Symbol
     | LispList [LispObject]
     | LispFunction FunctionInfo
     | LispTrue
