@@ -37,7 +37,8 @@ executable toy-lisp
   hs-source-dirs: app
   main-is:        Main.hs
   build-depends:
-    , base      ^>=4.19.2.0
+    , base                  ^>=4.19.2.0
+    , optparse-applicative  ^>=0.18.1.0
     , toy-lisp
 
 test-suite toy-lisp-test
