@@ -11,9 +11,9 @@ import           ToyLisp.Runtime
 import           ToyLisp.Syntax
 
 data TestIOState = TestIOState
-    { testInputs     :: [String]
-    , testOutput     :: String
-    , testError      :: String
+    { testInputs :: [String]
+    , testOutput :: String
+    , testError  :: String
     }
 
 newtype TestIO a = TestIO { runTestIO :: State TestIOState a }
