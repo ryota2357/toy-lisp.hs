@@ -6,9 +6,9 @@ module EvaluatorSpec (spec) where
 
 import           Control.Monad.State (State, gets, modify, runState)
 import           Test.Hspec
-import           ToyLisp.Evaluator
-import           ToyLisp.Runtime
-import           ToyLisp.Syntax
+import           ToyLisp.Evaluator   (eval)
+import qualified ToyLisp.Runtime     as RT
+import           ToyLisp.Syntax      (Ast (..), AstNode (..), TextRange (..))
 
 data TestIOState = TestIOState
     { testInputs :: [String]
@@ -19,7 +19,7 @@ data TestIOState = TestIOState
 newtype TestIO a = TestIO { runTestIO :: State TestIOState a }
     deriving (Functor, Applicative, Monad)
 
-instance ExecIO TestIO where
+instance RT.ExecIO TestIO where
     writeOutput str = TestIO $ modify $ \s -> s { testOutput = s.testOutput ++ str }
     writeError str = TestIO $ modify $ \s -> s { testError = s.testError ++ str }
     readInputLine = TestIO $ do
@@ -29,7 +29,7 @@ instance ExecIO TestIO where
                 modify $ \s -> s { testInputs = xs }
                 return x
 
-runEval :: Ast -> (Either RuntimeError LispObject, Environment, TestIOState)
+runEval :: Ast -> (Either RT.RuntimeError RT.LispObject, RT.Environment, TestIOState)
 runEval ast = (result, env, state)
   where
     ((result, env), state) = runState (runTestIO $ eval ast) (TestIOState
@@ -89,7 +89,7 @@ spec = do
                 let ast = Ast [ListNode (TextRange 0 7) [SymbolNode (TextRange 1 6) "princ"]]
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
-                result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
 
             it "too many arguments" $ do
                 let ast = Ast [ListNode (TextRange 0 11) [
@@ -98,4 +98,4 @@ spec = do
                                 IntNode (TextRange 9 10) 2]]
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
-                result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")

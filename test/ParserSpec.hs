@@ -4,7 +4,8 @@ module ParserSpec (spec) where
 
 import           Test.Hspec
 import           ToyLisp.Parser (parse)
-import           ToyLisp.Syntax
+import           ToyLisp.Syntax (Ast (..), AstNode (..), SyntaxError (..),
+                                 TextRange (..))
 
 spec :: Spec
 spec = do
