@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module ToyLisp.Evaluator (eval, evalContinue, EvalIO(..)) where
+module ToyLisp.Evaluator (eval, evalContinue) where
 
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
@@ -9,29 +9,15 @@ import           Control.Monad.State  (StateT, get, lift, runStateT)
 import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
-import           System.IO            (hFlush, hPutStr, stderr, stdout)
 import qualified ToyLisp.Runtime      as RT
-import           ToyLisp.Runtime      (Environment (..), GlobalBindings (..),
-                                       LexicalFrame (..), LispObject (..),
-                                       RuntimeError (..), SpecialFrame (..))
+import           ToyLisp.Runtime      (Environment (..), ExecIO,
+                                       GlobalBindings (..), LexicalFrame (..),
+                                       LispObject (..), RuntimeError (..),
+                                       SpecialFrame (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, unSymbol)
 
-class (Monad m) => EvalIO m where
-    writeOutput   :: String -> m ()
-    writeOutputLn :: String -> m ()
-    writeOutputLn = writeOutput . (++ "\n")
-    writeError   :: String -> m ()
-    writeErrorLn :: String -> m ()
-    writeErrorLn = writeError . (++ "\n")
-    readInputLine :: m String
-
-instance EvalIO IO where
-    writeOutput = (>> hFlush stdout) . putStr
-    writeError  = (>> hFlush stderr) . hPutStr stderr
-    readInputLine = getLine
-
-eval :: (EvalIO m) => Ast -> m (Either RuntimeError LispObject, Environment)
+eval :: (ExecIO m) => Ast -> m (Either RuntimeError LispObject, Environment)
 eval (Ast nodes) = do
     evalContinue env (Ast nodes)
   where
@@ -48,7 +34,7 @@ eval (Ast nodes) = do
             }
         }
 
-evalContinue :: (EvalIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
+evalContinue :: (ExecIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
 evalContinue env (Ast nodes) = do
     result <- runEvaluator $ mapM evalNode nodes
     return $ case result of
@@ -64,7 +50,7 @@ type Evaluator m = ExceptT RuntimeError (StateT Environment m)
 throwRuntimeError :: MonadError RuntimeError m => TextRange -> T.Text -> m a
 throwRuntimeError pos msg = throwError $ RuntimeError pos msg
 
-evalNode :: forall m. (EvalIO m) => AstNode -> Evaluator m LispObject
+evalNode :: forall m. (ExecIO m) => AstNode -> Evaluator m LispObject
 evalNode = \case
     IntNode _ i -> return $ LispInt i
     FloatNode _ f -> return $ LispFloat f
@@ -93,7 +79,7 @@ systemValueBindingsMap = M.fromList
     , ("t", LispTrue)
     ]
 
-systemFunctionBindingsMap :: (EvalIO m) => M.Map Symbol ([AstNode] -> Evaluator m (Either T.Text LispObject))
+systemFunctionBindingsMap :: (ExecIO m) => M.Map Symbol ([AstNode] -> Evaluator m (Either T.Text LispObject))
 systemFunctionBindingsMap = M.fromList
     [ ("+", \args -> do
         argValues <- mapM evalNode args
@@ -139,7 +125,7 @@ systemFunctionBindingsMap = M.fromList
         argValues <- mapM evalNode args
         case argValues of
             [arg] -> do
-                lift $ lift $ writeOutput $ fix (\self -> \case
+                lift $ lift $ RT.writeOutput $ fix (\self -> \case
                     LispInt i      -> show i
                     LispFloat f    -> show f
                     LispString s   -> T.unpack s

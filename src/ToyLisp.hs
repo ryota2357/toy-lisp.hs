@@ -2,8 +2,9 @@
 
 module ToyLisp where
 
-import           ToyLisp.Evaluator (EvalIO (..), eval)
+import           ToyLisp.Evaluator (eval)
 import           ToyLisp.Parser    (parse)
+import qualified ToyLisp.Runtime   as RT
 
 data RunConfig = RunConfig
     { runMode     :: RunMode
@@ -12,17 +13,17 @@ data RunConfig = RunConfig
 
 data RunMode = ExecuteProgram | ShowAstOnly
 
-runWith :: (EvalIO m) => RunConfig -> String -> m ()
+runWith :: (RT.ExecIO m) => RunConfig -> String -> m ()
 runWith config content = do
     case parse content of
-        Left err -> writeErrorLn $ show err
+        Left err -> RT.writeErrorLn $ show err
         Right ast -> do
             case config.runMode of
                 ExecuteProgram -> do
                     !_ <- eval ast
                     pure ()
                 ShowAstOnly -> do
-                    writeOutputLn $ show ast
+                    RT.writeOutputLn $ show ast
 
-runReplWith :: (EvalIO m) => RunConfig -> m ()
+runReplWith :: (RT.ExecIO m) => RunConfig -> m ()
 runReplWith _config = error "REPL mode not implemented"

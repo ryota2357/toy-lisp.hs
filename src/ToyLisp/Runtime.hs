@@ -5,7 +5,22 @@ module ToyLisp.Runtime where
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
+import           System.IO       (hFlush, hPutStr, stderr, stdout)
 import           ToyLisp.Syntax  (Ast, AstNode, Symbol, TextRange)
+
+class (Monad m) => ExecIO m where
+    writeOutput   :: String -> m ()
+    writeOutputLn :: String -> m ()
+    writeOutputLn = writeOutput . (++ "\n")
+    writeError   :: String -> m ()
+    writeErrorLn :: String -> m ()
+    writeErrorLn = writeError . (++ "\n")
+    readInputLine :: m String
+
+instance ExecIO IO where
+    writeOutput = (>> hFlush stdout) . putStr
+    writeError  = (>> hFlush stderr) . hPutStr stderr
+    readInputLine = getLine
 
 data LispObject
     = LispInt Integer

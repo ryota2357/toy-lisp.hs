@@ -19,7 +19,7 @@ data TestIOState = TestIOState
 newtype TestIO a = TestIO { runTestIO :: State TestIOState a }
     deriving (Functor, Applicative, Monad)
 
-instance EvalIO TestIO where
+instance ExecIO TestIO where
     writeOutput str = TestIO $ modify $ \s -> s { testOutput = s.testOutput ++ str }
     writeError str = TestIO $ modify $ \s -> s { testError = s.testError ++ str }
     readInputLine = TestIO $ do
