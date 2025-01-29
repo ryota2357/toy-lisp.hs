@@ -1,11 +1,12 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module ToyLisp.Evaluator (eval, evalContinue, EvalIO(..)) where
 
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
-import           Control.Monad.State  (StateT, get, lift, runStateT)
+import           Control.Monad.State  (StateT, get, lift, modify', runStateT)
 import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
@@ -134,6 +135,19 @@ systemFunctionBindingsMap = M.fromList
             [LispFloat a, LispInt b]   -> Right $ LispFloat (a / fromIntegral b)
             [_, _]                     -> Left "Arguments are not numbers"
             _                          -> Left $ mkInvalidArgCountErrorText "/" args
+      )
+    , ("setq", \args -> do
+        case args of
+            [SymbolNode _ sym, value] -> do
+                value' <- evalNode value
+                modify' $ \env -> env
+                    { globalBindings = env.globalBindings
+                        { glovalValueBindings = M.insert sym value' env.globalBindings.glovalValueBindings
+                        }
+                    }
+                return $ Right value'
+            [_, _] -> return $ Left "First argument is not a symbol"
+            _ -> return $ Left $ mkInvalidArgCountErrorText "setq" args
       )
     , ("princ", \args -> do
         argValues <- mapM evalNode args
