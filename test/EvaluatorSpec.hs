@@ -1,25 +1,43 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module EvaluatorSpec (spec) where
 
-import           Control.Monad.State (State, modify, runState)
+import           Control.Monad.State (State, gets, modify, runState)
 import           Test.Hspec
 import           ToyLisp.Evaluator
 import           ToyLisp.Runtime
 import           ToyLisp.Syntax
 
-newtype TestIO a = TestIO { runTestIO :: State String a }
+data TestIOState = TestIOState
+    { testInputs     :: [String]
+    , testOutput     :: String
+    , testError      :: String
+    }
+
+newtype TestIO a = TestIO { runTestIO :: State TestIOState a }
     deriving (Functor, Applicative, Monad)
 
 instance EvalIO TestIO where
-    writeOutput str = TestIO $ modify (++ str)
-    writeError _ = error "Unexpected error output"
+    writeOutput str = TestIO $ modify $ \s -> s { testOutput = s.testOutput ++ str }
+    writeError str = TestIO $ modify $ \s -> s { testError = s.testError ++ str }
+    readInputLine = TestIO $ do
+        gets testInputs >>= \case
+            [] -> return ""
+            (x:xs) -> do
+                modify $ \s -> s { testInputs = xs }
+                return x
 
-runEval :: Ast -> (Either RuntimeError Environment, String)
-runEval ast = runState (runTestIO $ eval ast) ""
+runEval :: Ast -> (Either RuntimeError Environment, TestIOState)
+runEval ast = runState (runTestIO $ eval ast) (TestIOState
+    { testInputs = []
+    , testOutput = ""
+    , testError = ""
+    })
 
 runEvalOutput :: Ast -> String
-runEvalOutput ast = snd (runEval ast)
+runEvalOutput ast = (snd (runEval ast)).testOutput
 
 spec :: Spec
 spec = do
@@ -65,8 +83,8 @@ spec = do
         describe "princ error" $ do
             it "no arguments" $ do
                 let ast = Ast [ListNode (TextRange 0 7) [SymbolNode (TextRange 1 6) "princ"]]
-                let (result, output) = runEval ast
-                output `shouldBe` ""
+                let (result, io) = runEval ast
+                io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
 
             it "too many arguments" $ do
@@ -74,6 +92,6 @@ spec = do
                                 SymbolNode (TextRange 1 6) "princ",
                                 IntNode (TextRange 7 8) 1,
                                 IntNode (TextRange 9 10) 2]]
-                let (ret, output) = runEval ast
-                output `shouldBe` ""
-                ret `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
+                let (result, io) = runEval ast
+                io.testOutput `shouldBe` ""
+                result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")

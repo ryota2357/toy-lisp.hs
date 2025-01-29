@@ -24,10 +24,12 @@ class (Monad m) => EvalIO m where
     writeError   :: String -> m ()
     writeErrorLn :: String -> m ()
     writeErrorLn = writeError . (++ "\n")
+    readInputLine :: m String
 
 instance EvalIO IO where
     writeOutput = (>> hFlush stdout) . putStr
     writeError  = (>> hFlush stderr) . hPutStr stderr
+    readInputLine = getLine
 
 eval :: (EvalIO m) => Ast -> m (Either RuntimeError Environment)
 eval (Ast nodes) = do
