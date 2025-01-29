@@ -22,11 +22,10 @@ data FunctionInfo = FunctionInfo
     , functionBody :: Ast
     } deriving (Show, Eq)
 
-data CallFrame = CallFrame
-    { valueBindings    :: M.Map Symbol LispObject
-    , functionBindings :: M.Map Symbol FunctionInfo
-    , specialFrameInfo :: (SpecialFrame, Bool)
-    , parentCallFrame  :: Maybe CallFrame
+data LexicalFrame = LexicalFrame
+    { valueBindings      :: M.Map Symbol LispObject
+    , functionBindings   :: M.Map Symbol FunctionInfo
+    , parentLexicalFrame :: Maybe LexicalFrame
     } deriving (Show, Eq)
 
 data SpecialFrame = SpecialFrame
@@ -40,15 +39,16 @@ data GlobalBindings = GlobalBindings
     } deriving (Show, Eq)
 
 data Environment = Environment
-    { globalBindings   :: GlobalBindings
-    , currentCallFrame :: CallFrame
+    { globalBindings      :: GlobalBindings
+    , currentLexicalFrame :: LexicalFrame
+    , currentSpecialFrame :: SpecialFrame
     } deriving (Show, Eq)
 
 lookupBindingValue :: Symbol -> Environment -> Maybe LispObject
 lookupBindingValue symbol env = do
     case () of
-        _ | Just obj <- lookupSpecialBindings symbol (fst env.currentCallFrame.specialFrameInfo) -> Just obj
-          | Just obj <- lookupLexicalBindings symbol env.currentCallFrame -> Just obj
+        _ | Just obj <- lookupSpecialBindings symbol env.currentSpecialFrame -> Just obj
+          | Just obj <- lookupLexicalBindings symbol env.currentLexicalFrame -> Just obj
           | Just obj <- lookupGlobalBindings symbol env.globalBindings -> Just obj
           | otherwise -> Nothing
   where
@@ -59,7 +59,7 @@ lookupBindingValue symbol env = do
             Nothing     -> Nothing
     lookupLexicalBindings name frame = case M.lookup name frame.valueBindings of
         Just obj -> Just obj
-        Nothing  -> case frame.parentCallFrame of
+        Nothing  -> case frame.parentLexicalFrame of
             Just parent -> lookupLexicalBindings name parent
             Nothing     -> Nothing
     lookupGlobalBindings name bindings = M.lookup name bindings.glovalValueBindings
@@ -67,13 +67,13 @@ lookupBindingValue symbol env = do
 lookupFunctinBinding :: Symbol -> Environment -> Maybe FunctionInfo
 lookupFunctinBinding symbol env = do
     case () of
-         _| Just obj <- lookupLexicalBindings symbol env.currentCallFrame -> Just obj
+         _| Just obj <- lookupLexicalBindings symbol env.currentLexicalFrame -> Just obj
           | Just obj <- lookupGlobalBindings symbol env.globalBindings -> Just obj
           | otherwise -> Nothing
   where
     lookupLexicalBindings name frame = case M.lookup name frame.functionBindings of
         Just obj -> Just obj
-        Nothing  -> case frame.parentCallFrame of
+        Nothing  -> case frame.parentLexicalFrame of
             Just parent -> lookupLexicalBindings name parent
             Nothing     -> Nothing
     lookupGlobalBindings name bindings = M.lookup name bindings.glovalFunctionBindings

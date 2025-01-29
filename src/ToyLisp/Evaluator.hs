@@ -11,8 +11,8 @@ import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
 import           System.IO            (hFlush, hPutStr, stderr, stdout)
 import qualified ToyLisp.Runtime      as RT
-import           ToyLisp.Runtime      (CallFrame (..), Environment (..),
-                                       GlobalBindings (..), LispObject (..),
+import           ToyLisp.Runtime      (Environment (..), GlobalBindings (..),
+                                       LexicalFrame (..), LispObject (..),
                                        RuntimeError (..), SpecialFrame (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, unSymbol)
@@ -37,11 +37,14 @@ eval (Ast nodes) = do
   where
     env = Environment
         { globalBindings = GlobalBindings M.empty M.empty
-        , currentCallFrame = CallFrame
+        , currentLexicalFrame = LexicalFrame
             { valueBindings = M.empty
             , functionBindings = M.empty
-            , specialFrameInfo = (SpecialFrame M.empty Nothing, False)
-            , parentCallFrame = Nothing
+            , parentLexicalFrame = Nothing
+            }
+        , currentSpecialFrame = SpecialFrame
+            { specialBindings = M.empty
+            , parentSpecialFrame = Nothing
             }
         }
 
