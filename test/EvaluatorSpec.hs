@@ -29,15 +29,19 @@ instance EvalIO TestIO where
                 modify $ \s -> s { testInputs = xs }
                 return x
 
-runEval :: Ast -> (Either RuntimeError Environment, TestIOState)
-runEval ast = runState (runTestIO $ eval ast) (TestIOState
-    { testInputs = []
-    , testOutput = ""
-    , testError = ""
-    })
+runEval :: Ast -> (Either RuntimeError LispObject, Environment, TestIOState)
+runEval ast = (result, env, state)
+  where
+    ((result, env), state) = runState (runTestIO $ eval ast) (TestIOState
+        { testInputs = []
+        , testOutput = ""
+        , testError = ""
+        })
 
 runEvalOutput :: Ast -> String
-runEvalOutput ast = (snd (runEval ast)).testOutput
+runEvalOutput ast = (third $ runEval ast).testOutput
+  where
+    third (_, _, x) = x
 
 spec :: Spec
 spec = do
@@ -83,7 +87,7 @@ spec = do
         describe "princ error" $ do
             it "no arguments" $ do
                 let ast = Ast [ListNode (TextRange 0 7) [SymbolNode (TextRange 1 6) "princ"]]
-                let (result, io) = runEval ast
+                let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
 
@@ -92,6 +96,6 @@ spec = do
                                 SymbolNode (TextRange 1 6) "princ",
                                 IntNode (TextRange 7 8) 1,
                                 IntNode (TextRange 9 10) 2]]
-                let (result, io) = runEval ast
+                let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")

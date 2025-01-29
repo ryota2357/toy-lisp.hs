@@ -31,7 +31,7 @@ instance EvalIO IO where
     writeError  = (>> hFlush stderr) . hPutStr stderr
     readInputLine = getLine
 
-eval :: (EvalIO m) => Ast -> m (Either RuntimeError Environment)
+eval :: (EvalIO m) => Ast -> m (Either RuntimeError LispObject, Environment)
 eval (Ast nodes) = do
     evalContinue env (Ast nodes)
   where
@@ -48,16 +48,18 @@ eval (Ast nodes) = do
             }
         }
 
-evalContinue :: (EvalIO m) => Environment -> Ast -> m (Either RuntimeError Environment)
+evalContinue :: (EvalIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
 evalContinue env (Ast nodes) = do
-    result <- runEvaluator $ mapM_ evalNode nodes
+    result <- runEvaluator $ mapM evalNode nodes
     return $ case result of
-        Left err            -> Left err
-        Right (_, finalEnv) -> Right finalEnv
+        (Left err, finalEnv) -> (Left err, finalEnv)
+        (Right objs, finalEnv) -> case objs of
+            []    -> (Right $ LispList [], finalEnv)
+            objs' -> (Right $ last objs', finalEnv)
   where
-    runEvaluator evaluator = runExceptT $ runStateT evaluator env
+    runEvaluator evaluator = runStateT (runExceptT evaluator) env
 
-type Evaluator m = StateT Environment (ExceptT RuntimeError m)
+type Evaluator m = ExceptT RuntimeError (StateT Environment m)
 
 throwRuntimeError :: MonadError RuntimeError m => TextRange -> T.Text -> m a
 throwRuntimeError pos msg = throwError $ RuntimeError pos msg
