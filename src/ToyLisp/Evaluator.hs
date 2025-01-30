@@ -43,7 +43,7 @@ evalNode = \case
         env <- get
         case M.lookup sym systemValueBindingsMap of
             Just obj -> pure obj
-            Nothing  -> case RT.lookupBindingValue sym env of
+            Nothing  -> case RT.lookupValueBinding sym env of
                 Just obj -> pure obj
                 Nothing  -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
     ListNode _ [] -> pure $ LispList []

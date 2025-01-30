@@ -80,8 +80,8 @@ emptyEnvironment = Environment
     , currentSpecialFrame = SpecialFrame M.empty Nothing
     }
 
-lookupBindingValue :: Symbol -> Environment -> Maybe LispObject
-lookupBindingValue symbol env = do
+lookupValueBinding :: Symbol -> Environment -> Maybe LispObject
+lookupValueBinding symbol env = do
     case () of
         _ | Just obj <- lookupSpecialBindings symbol env.currentSpecialFrame -> Just obj
           | Just obj <- lookupLexicalBindings symbol env.currentLexicalFrame -> Just obj
