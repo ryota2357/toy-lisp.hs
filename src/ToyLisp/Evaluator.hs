@@ -66,6 +66,7 @@ callFunction = error "Not implemented"
 systemValueBindingsMap :: M.Map Symbol LispObject
 systemValueBindingsMap = M.fromList
     [ ("nil", LispList [])
+    , ("pi", LispFloat pi)
     , ("t", LispTrue)
     ]
 
@@ -177,6 +178,19 @@ systemFunctionBindingsMap = M.fromList
                 pure $ Right value'
         [_, _] -> pure $ Left "Variable name is not a symbol"
         _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args
+      )
+    , ("type-of", \args -> do
+        argValues <- mapM evalNode args
+        pure $ case argValues of
+            [arg] -> Right $ LispSymbol $ case arg of
+                    LispInt _      -> "INTEGER"
+                    LispFloat _    -> "FLOAT"
+                    LispString _   -> "STRING"
+                    LispSymbol _   -> "SYMBOL"
+                    LispList _     -> "LIST"
+                    LispFunction _ -> "FUNCTION"
+                    LispTrue       -> "T"
+            _ -> Left $ mkInvalidArgCountErrorText "type-of" args
       )
     ]
   where
