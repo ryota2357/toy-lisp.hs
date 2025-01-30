@@ -3,7 +3,7 @@
 
 module ToyLisp.Evaluator (eval) where
 
-import           Control.Monad        (forM)
+import           Control.Monad        (foldM, forM)
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
 import           Control.Monad.State  (StateT, get, gets, lift, modify',
@@ -67,43 +67,64 @@ systemFunctionBindingsMap :: (ExecIO m) => M.Map Symbol ([AstNode] -> Evaluator 
 systemFunctionBindingsMap = M.fromList
     [ ("+", \args -> do
         argValues <- mapM evalNode args
-        pure $ case argValues of
-            [LispInt a, LispInt b]     -> Right $ LispInt (a + b)
-            [LispFloat a, LispFloat b] -> Right $ LispFloat (a + b)
-            [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a + b)
-            [LispFloat a, LispInt b]   -> Right $ LispFloat (a + fromIntegral b)
-            [_, _]                     -> Left "Arguments are not numbers"
-            _                          -> Left $ mkInvalidArgCountErrorText "+" args
+        pure $ foldM (\acc v -> case (acc, v) of
+            (LispInt a, LispInt b)     -> Right $ LispInt (a + b)
+            (LispFloat a, LispFloat b) -> Right $ LispFloat (a + b)
+            (LispInt a, LispFloat b)   -> Right $ LispFloat (fromIntegral a + b)
+            (LispFloat a, LispInt b)   -> Right $ LispFloat (a + fromIntegral b)
+            _                          -> Left "Arguments are not numbers"
+            ) (LispInt 0) argValues
       )
     , ("-", \args -> do
         argValues <- mapM evalNode args
         pure $ case argValues of
-            [LispInt a, LispInt b]     -> Right $ LispInt (a - b)
-            [LispFloat a, LispFloat b] -> Right $ LispFloat (a - b)
-            [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a - b)
-            [LispFloat a, LispInt b]   -> Right $ LispFloat (a - fromIntegral b)
-            [_, _]                     -> Left "Arguments are not numbers"
-            _                          -> Left $ mkInvalidArgCountErrorText "-" args
+            [] -> Left $ mkInvalidArgCountErrorText "-" []
+            [e] -> case e of
+                LispInt i   -> Right $ LispInt (-i)
+                LispFloat f -> Right $ LispFloat (-f)
+                _           -> Left "Argument is not a number"
+            e : es -> foldM (\acc v -> case (acc, v) of
+                (LispInt a, LispInt b)     -> Right $ LispInt (a - b)
+                (LispFloat a, LispFloat b) -> Right $ LispFloat (a - b)
+                (LispInt a, LispFloat b)   -> Right $ LispFloat (fromIntegral a - b)
+                (LispFloat a, LispInt b)   -> Right $ LispFloat (a - fromIntegral b)
+                _                          -> Left "Arguments are not numbers"
+                ) e es
       )
     , ("*", \args -> do
         argValues <- mapM evalNode args
-        pure $ case argValues of
-            [LispInt a, LispInt b]     -> Right $ LispInt (a * b)
-            [LispFloat a, LispFloat b] -> Right $ LispFloat (a * b)
-            [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a * b)
-            [LispFloat a, LispInt b]   -> Right $ LispFloat (a * fromIntegral b)
-            [_, _]                     -> Left "Arguments are not numbers"
-            _                          -> Left $ mkInvalidArgCountErrorText "*" args
+        pure $ foldM (\acc v -> case (acc, v) of
+            (LispInt a, LispInt b)     -> Right $ LispInt (a * b)
+            (LispFloat a, LispFloat b) -> Right $ LispFloat (a * b)
+            (LispInt a, LispFloat b)   -> Right $ LispFloat (fromIntegral a * b)
+            (LispFloat a, LispInt b)   -> Right $ LispFloat (a * fromIntegral b)
+            _                          -> Left "Arguments are not numbers"
+            ) (LispInt 1) argValues
       )
     , ("/", \args -> do
         argValues <- mapM evalNode args
+        let divideByZeroMsg = "Division by zero"
         pure $ case argValues of
-            [LispInt a, LispInt b]     -> Right $ LispInt (a `div` b)
-            [LispFloat a, LispFloat b] -> Right $ LispFloat (a / b)
-            [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a / b)
-            [LispFloat a, LispInt b]   -> Right $ LispFloat (a / fromIntegral b)
-            [_, _]                     -> Left "Arguments are not numbers"
-            _                          -> Left $ mkInvalidArgCountErrorText "/" args
+            [] -> Left $ mkInvalidArgCountErrorText "/" []
+            [e] -> case e of
+                LispInt 0   -> Left divideByZeroMsg
+                LispFloat 0 -> Left divideByZeroMsg
+                LispInt i   -> Right $ LispFloat (1 / fromIntegral i)
+                LispFloat f -> Right $ LispFloat (1 / f)
+                _           -> Left "Argument is not a number"
+            e : es -> foldM (\acc v -> case (acc, v) of
+                (LispInt a, LispInt b)     | b /= 0 -> Right $ if a `mod` b == 0
+                                                                then LispInt (a `div` b)
+                                                                else LispFloat (fromIntegral a / fromIntegral b)
+                (LispFloat a, LispFloat b) | b /= 0 -> Right $ LispFloat (a / b)
+                (LispInt a, LispFloat b)   | b /= 0 -> Right $ LispFloat (fromIntegral a / b)
+                (LispFloat a, LispInt b)   | b /= 0 -> Right $ LispFloat (a / fromIntegral b)
+                (LispInt _, LispInt 0)     -> Left divideByZeroMsg
+                (LispFloat _, LispFloat 0) -> Left divideByZeroMsg
+                (LispInt _, LispFloat 0)   -> Left divideByZeroMsg
+                (LispFloat _, LispInt 0)   -> Left divideByZeroMsg
+                _                          -> Left "Arguments are not numbers"
+                ) e es
       )
     , ("defun", \args -> case args of
         SymbolNode _ fnName : ListNode _ params : body ->

@@ -110,6 +110,74 @@ spec = do
                 io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
 
+        describe "arithmetic operations" $ do
+            let princAst node = Ast [ListNode s [SymbolNode s "princ", node]]
+
+            it "addition" $ do
+                let ast_0 = princAst $ ListNode s [SymbolNode s "+"]
+                runEvalOutput ast_0 `shouldBe` "0"
+                let ast_i1 = princAst $ ListNode s [SymbolNode s "+", IntNode s 3]
+                runEvalOutput ast_i1 `shouldBe` "3"
+                let ast_f1 = princAst $ ListNode s [SymbolNode s "+", FloatNode s 3.14]
+                runEvalOutput ast_f1 `shouldBe` "3.14"
+                let ast_is = princAst $ ListNode s [SymbolNode s "+", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]
+                runEvalOutput ast_is `shouldBe` "10"
+                let ast_mixed = princAst $ ListNode s [SymbolNode s "+", IntNode s 1, FloatNode s 2.5]
+                runEvalOutput ast_mixed `shouldBe` "3.5"
+
+            it "subtraction" $ do
+                let ast_0 = princAst $ ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "-"] -- (princ (-))
+                let (result, _, _) = runEvalWith RT.emptyEnvironment ast_0
+                result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Invalid number of arguments for -: 0")
+                let ast_i1 = princAst $ ListNode s [SymbolNode s "-", IntNode s 2]
+                runEvalOutput ast_i1 `shouldBe` "-2"
+                let ast_f1 = princAst $ ListNode s [SymbolNode s "-", FloatNode s 2.71]
+                runEvalOutput ast_f1 `shouldBe` "-2.71"
+                let ast_is = princAst $ ListNode s [SymbolNode s "-", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]
+                runEvalOutput ast_is `shouldBe` "-8"
+                let ast_mixed = princAst $ ListNode s [SymbolNode s "-", IntNode s 2, FloatNode s 2.5]
+                runEvalOutput ast_mixed `shouldBe` "-0.5"
+
+            it "multiplication" $ do
+                let ast_0 = princAst $ ListNode s [SymbolNode s "*"]
+                runEvalOutput ast_0 `shouldBe` "1"
+                let ast_i1 = princAst $ ListNode s [SymbolNode s "*", IntNode s 3]
+                runEvalOutput ast_i1 `shouldBe` "3"
+                let ast_f1 = princAst $ ListNode s [SymbolNode s "*", FloatNode s 3.14]
+                runEvalOutput ast_f1 `shouldBe` "3.14"
+                let ast_is = princAst $ ListNode s [SymbolNode s "*", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]
+                runEvalOutput ast_is `shouldBe` "24"
+                let ast_mixed = princAst $ ListNode s [SymbolNode s "*", IntNode s 2, FloatNode s 2.5]
+                runEvalOutput ast_mixed `shouldBe` "5.0"
+
+            it "division" $ do
+                let ast_0 = princAst $ ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "/"] -- (princ (/))
+                let (result, _, _) = runEvalWith RT.emptyEnvironment ast_0
+                result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Invalid number of arguments for /: 0")
+                let ast_i1 = princAst $ ListNode s [SymbolNode s "/", IntNode s 2]
+                runEvalOutput ast_i1 `shouldBe` "0.5"
+                let ast_f1 = princAst $ ListNode s [SymbolNode s "/", FloatNode s 4]
+                runEvalOutput ast_f1 `shouldBe` "0.25"
+                let ast_is = princAst $ ListNode s [SymbolNode s "/", IntNode s 8, IntNode s 2, IntNode s 4]
+                runEvalOutput ast_is `shouldBe` "1"
+                let ast_mixed = princAst $ ListNode s [SymbolNode s "/", IntNode s 2, FloatNode s 2.5]
+                runEvalOutput ast_mixed `shouldBe` "0.8"
+
+            it "division by zero" $ do
+                let div_by_i1_zero = princAst $ ListNode s [SymbolNode s "/", IntNode s 0]
+                let (result_i1, _, _) = runEvalWith RT.emptyEnvironment div_by_i1_zero
+                result_i1 `shouldBe` Left (RT.RuntimeError s "Division by zero")
+                let div_by_f1_zero = princAst $ ListNode s [SymbolNode s "/", FloatNode s 0]
+                let (result_f1, _, _) = runEvalWith RT.emptyEnvironment div_by_f1_zero
+                result_f1 `shouldBe` Left (RT.RuntimeError s "Division by zero")
+                let div_by_i2_zero = princAst $ ListNode s [SymbolNode s "/", IntNode s 2, IntNode s 0]
+                let (result_i2, _, _) = runEvalWith RT.emptyEnvironment div_by_i2_zero
+                result_i2 `shouldBe` Left (RT.RuntimeError s "Division by zero")
+                let div_by_f2_zero = princAst $ ListNode s [SymbolNode s "/", FloatNode s 2, FloatNode s 0]
+                let (result_f2, _, _) = runEvalWith RT.emptyEnvironment div_by_f2_zero
+                result_f2 `shouldBe` Left (RT.RuntimeError s "Division by zero")
+
+
         describe "setq ok" $ do
             it "set unbound symbol" $ do -- (setq a 42)
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", IntNode s 42]]
