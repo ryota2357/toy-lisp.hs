@@ -35,7 +35,7 @@ runReplWith config = do
     executeProgramLoop = loop RT.emptyEnvironment
       where
         loop env = do
-            RT.writeOutput "* "
+            RT.writeOutput "> "
             input <- readSExpr
             case parse input of
                 Left err -> do
@@ -47,7 +47,7 @@ runReplWith config = do
                         Left err  -> RT.writeErrorLn $ show err
                         Right obj -> do
                             let display = RT.displayLispObjectWith (const Nothing)
-                            RT.writeOutputLn $ "\n" ++ display obj
+                            RT.writeOutputLn $ "← " ++ display obj
                     loop nextEnv
     showAstOnlyLoop = do
         input <- readSExpr
