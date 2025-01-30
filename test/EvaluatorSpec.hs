@@ -49,6 +49,14 @@ runEvalOutput ast = (third $ runEval ast).testOutput
 
 spec :: Spec
 spec = do
+    describe "eval" $ do
+        it "empty input" $ do
+            let ast = Ast []
+            let (result, env, io) = runEval ast
+            result `shouldBe` Right (RT.LispList [])
+            env `shouldBe` RT.emptyEnvironment
+            io.testOutput `shouldBe` ""
+
     describe "system function" $ do
         let s = TextRange 0 0
         describe "princ ok" $ do
