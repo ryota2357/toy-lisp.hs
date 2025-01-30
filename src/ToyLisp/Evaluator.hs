@@ -106,15 +106,10 @@ systemFunctionBindingsMap = M.fromList
         argValues <- mapM evalNode args
         case argValues of
             [arg] -> do
-                lift $ lift $ RT.writeOutput $ fix (\self -> \case
-                    LispInt i      -> show i
-                    LispFloat f    -> show f
-                    LispString s   -> T.unpack s
-                    LispSymbol s -> T.unpack $ unSymbol s
-                    LispList []    -> "NIL"
-                    LispList xs    -> "(" ++ unwords (map self xs) ++ ")"
-                    LispTrue       -> "T"
-                    LispFunction _ -> "<function>") arg
+                let display = RT.displayLispObjectWith $ \case
+                        LispString s -> Just $ T.unpack s
+                        _            -> Nothing
+                lift $ lift $ RT.writeOutput $ display arg
                 return $ Right arg
             _ -> return $ Left $ mkInvalidArgCountErrorText "princ" args
       )

@@ -6,7 +6,7 @@ module ToyLisp.Runtime where
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import           System.IO       (hFlush, hPutStr, stderr, stdout)
-import           ToyLisp.Syntax  (Ast, AstNode, Symbol, TextRange)
+import           ToyLisp.Syntax  (Ast, AstNode, Symbol, TextRange, unSymbol)
 
 class (Monad m) => ExecIO m where
     writeOutput   :: String -> m ()
@@ -31,6 +31,19 @@ data LispObject
     | LispFunction FunctionInfo
     | LispTrue
     deriving (Show, Eq)
+
+displayLispObjectWith :: (LispObject -> Maybe String) -> LispObject -> String
+displayLispObjectWith override obj = case override obj of
+    Just str -> str
+    Nothing  -> case obj of
+        LispInt i      -> show i
+        LispFloat f    -> show f
+        LispString s   -> "\"" ++ T.unpack s ++ "\""
+        LispSymbol s   -> T.unpack $ unSymbol s
+        LispList []    -> "NIL"
+        LispList xs    -> "(" ++ unwords (map (displayLispObjectWith override) xs) ++ ")"
+        LispTrue       -> "T"
+        LispFunction _ -> "<function>"
 
 data FunctionInfo = FunctionInfo
     { functionArgs :: [AstNode]
