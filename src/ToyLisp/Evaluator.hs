@@ -113,16 +113,15 @@ systemFunctionBindingsMap = M.fromList
                 return $ Right arg
             _ -> return $ Left $ mkInvalidArgCountErrorText "princ" args
       )
-    , ("quote", \args -> do
-        case args of
-            [arg] -> return $ Right $ fix (\quote -> \case
-                IntNode _ i -> LispInt i
-                FloatNode _ f -> LispFloat f
-                StringNode _ s -> LispString s
-                SymbolNode _ sym -> LispSymbol sym
-                ListNode _ nodes -> LispList $ map quote nodes
-                ) arg
-            _     -> return $ Left $ mkInvalidArgCountErrorText "quote" args
+    , ("quote", \args -> pure $ case args of
+        [arg] -> Right $ fix (\quote -> \case
+            IntNode _ i -> LispInt i
+            FloatNode _ f -> LispFloat f
+            StringNode _ s -> LispString s
+            SymbolNode _ sym -> LispSymbol sym
+            ListNode _ nodes -> LispList $ map quote nodes
+            ) arg
+        _ -> Left $ mkInvalidArgCountErrorText "quote" args
       )
     ]
   where
