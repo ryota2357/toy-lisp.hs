@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module ToyLisp.Evaluator (eval, evalContinue) where
+module ToyLisp.Evaluator (eval) where
 
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
@@ -10,32 +10,13 @@ import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
 import qualified ToyLisp.Runtime      as RT
-import           ToyLisp.Runtime      (Environment (..), ExecIO,
-                                       GlobalBindings (..), LexicalFrame (..),
-                                       LispObject (..), RuntimeError (..),
-                                       SpecialFrame (..))
+import           ToyLisp.Runtime      (Environment, ExecIO, LispObject (..),
+                                       RuntimeError (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, unSymbol)
 
-eval :: (ExecIO m) => Ast -> m (Either RuntimeError LispObject, Environment)
-eval (Ast nodes) = do
-    evalContinue env (Ast nodes)
-  where
-    env = Environment
-        { globalBindings = GlobalBindings M.empty M.empty
-        , currentLexicalFrame = LexicalFrame
-            { valueBindings = M.empty
-            , functionBindings = M.empty
-            , parentLexicalFrame = Nothing
-            }
-        , currentSpecialFrame = SpecialFrame
-            { specialBindings = M.empty
-            , parentSpecialFrame = Nothing
-            }
-        }
-
-evalContinue :: (ExecIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
-evalContinue env (Ast nodes) = do
+eval :: (ExecIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
+eval env (Ast nodes) = do
     result <- runEvaluator $ mapM evalNode nodes
     return $ case result of
         (Left err, finalEnv) -> (Left err, finalEnv)

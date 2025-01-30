@@ -32,7 +32,7 @@ instance RT.ExecIO TestIO where
 runEval :: Ast -> (Either RT.RuntimeError RT.LispObject, RT.Environment, TestIOState)
 runEval ast = (result, env, state)
   where
-    ((result, env), state) = runState (runTestIO $ eval ast) (TestIOState
+    ((result, env), state) = runState (runTestIO $ eval RT.emptyEnvironment ast) (TestIOState
         { testInputs = []
         , testOutput = ""
         , testError = ""

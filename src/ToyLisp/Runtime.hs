@@ -59,6 +59,13 @@ data Environment = Environment
     , currentSpecialFrame :: SpecialFrame
     } deriving (Show, Eq)
 
+emptyEnvironment :: Environment
+emptyEnvironment = Environment
+    { globalBindings = GlobalBindings M.empty M.empty
+    , currentLexicalFrame = LexicalFrame M.empty M.empty Nothing
+    , currentSpecialFrame = SpecialFrame M.empty Nothing
+    }
+
 lookupBindingValue :: Symbol -> Environment -> Maybe LispObject
 lookupBindingValue symbol env = do
     case () of

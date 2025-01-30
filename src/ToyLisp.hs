@@ -20,7 +20,7 @@ runWith config content = do
         Right ast -> do
             case config.runMode of
                 ExecuteProgram -> do
-                    !_ <- eval ast
+                    !_ <- eval RT.emptyEnvironment ast
                     pure ()
                 ShowAstOnly -> do
                     RT.writeOutputLn $ show ast
