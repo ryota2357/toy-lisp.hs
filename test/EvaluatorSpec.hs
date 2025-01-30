@@ -5,6 +5,7 @@
 module EvaluatorSpec (spec) where
 
 import           Control.Monad.State (State, gets, modify, runState)
+import qualified Data.Map.Strict     as M
 import           Test.Hspec
 import           ToyLisp.Evaluator   (eval)
 import qualified ToyLisp.Runtime     as RT
@@ -30,9 +31,12 @@ instance RT.ExecIO TestIO where
                 return x
 
 runEval :: Ast -> (Either RT.RuntimeError RT.LispObject, RT.Environment, TestIOState)
-runEval ast = (result, env, state)
+runEval = runEvalWith RT.emptyEnvironment
+
+runEvalWith :: RT.Environment -> Ast -> (Either RT.RuntimeError RT.LispObject, RT.Environment, TestIOState)
+runEvalWith env ast = (result, env', state)
   where
-    ((result, env), state) = runState (runTestIO $ eval RT.emptyEnvironment ast) (TestIOState
+    ((result, env'), state) = runState (runTestIO $ eval env ast) (TestIOState
         { testInputs = []
         , testOutput = ""
         , testError = ""
@@ -96,3 +100,46 @@ spec = do
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
+
+        describe "setq ok" $ do
+            it "set unbound symbol" $ do -- (setq a 42)
+                let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", IntNode s 42]]
+                let (_, env, _) = runEval ast
+                M.lookup "a" env.globalBindings.glovalValueBindings `shouldBe` Just (RT.LispInt 42)
+
+            it "set bound symbol" $ do -- (setq a 3.14) ; a is already bound to 3
+                let env = RT.emptyEnvironment { RT.globalBindings = RT.GlobalBindings
+                        { RT.glovalValueBindings = M.singleton "a" (RT.LispInt 3)
+                        , RT.glovalFunctionBindings = M.empty
+                        }}
+                let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", FloatNode s 3.14]]
+                let (_, env', _) = runEvalWith env ast
+                M.lookup "a" env'.globalBindings.glovalValueBindings `shouldBe` Just (RT.LispFloat 3.14)
+
+            it "set evaluated value" $ do
+                let ast = Ast [ListNode s [
+                            SymbolNode s "setq", SymbolNode s "a", ListNode s [
+                                SymbolNode s "+", IntNode s 1, IntNode s 2]]]
+                let (_, env, _) = runEval ast
+                M.lookup "a" env.globalBindings.glovalValueBindings `shouldBe` Just (RT.LispInt 3)
+
+        describe "setq error" $ do
+            it "no arguments" $ do -- (setq)
+                let ast = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "setq"]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for SETQ: 0")
+
+            it "one argument" $ do -- (setq 1)
+                let ast = Ast [ListNode (TextRange 0 8) [SymbolNode (TextRange 1 4) "setq", IntNode s 1]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 4) "Invalid number of arguments for SETQ: 1")
+
+            it "three arguments" $ do -- (setq a 1 2)
+                let ast = Ast [ListNode (TextRange 0 13) [SymbolNode (TextRange 1 5) "setq", SymbolNode s "a", IntNode s 1, IntNode s 2]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for SETQ: 3")
+
+            it "first argument is not symbol" $ do -- (setq 1 2)
+                let ast = Ast [ListNode (TextRange 0 10) [SymbolNode (TextRange 1 5) "setq", IntNode s 1, IntNode s 2]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Variable name is not a symbol")
