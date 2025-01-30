@@ -69,7 +69,7 @@ readSExpr = readLoop "" ReadSExprState { parensDepth = 0, isInsideString = False
         let nextString = currentString ++ inputedLine
         let nextState = updateState state inputedLine
         if (nextState.parensDepth < 0) || (nextState.parensDepth == 0 && not nextState.isInsideString)
-            then return nextString
+            then pure nextString
             else readLoop nextString nextState
     updateState state line = foldl updateByChar state $ zip (Nothing : map Just line) line
       where

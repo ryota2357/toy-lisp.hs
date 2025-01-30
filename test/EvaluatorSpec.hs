@@ -25,10 +25,10 @@ instance RT.ExecIO TestIO where
     writeError str = TestIO $ modify $ \s -> s { testError = s.testError ++ str }
     readInputLine = TestIO $ do
         gets testInputs >>= \case
-            [] -> return ""
+            [] -> pure ""
             (x:xs) -> do
                 modify $ \s -> s { testInputs = xs }
-                return x
+                pure x
 
 runEval :: Ast -> (Either RT.RuntimeError RT.LispObject, RT.Environment, TestIOState)
 runEval = runEvalWith RT.emptyEnvironment

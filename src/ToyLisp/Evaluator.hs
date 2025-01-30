@@ -3,23 +3,25 @@
 
 module ToyLisp.Evaluator (eval) where
 
-import           Control.Monad (forM)
+import           Control.Monad        (forM)
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
-import           Control.Monad.State  (StateT, get, gets, lift, modify', runStateT)
+import           Control.Monad.State  (StateT, get, gets, lift, modify',
+                                       runStateT)
 import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
 import qualified ToyLisp.Runtime      as RT
-import           ToyLisp.Runtime      (Environment (..), ExecIO, LispObject (..),
-                                       RuntimeError (..), FunctionInfo (..))
+import           ToyLisp.Runtime      (Environment (..), ExecIO,
+                                       FunctionInfo (..), LispObject (..),
+                                       RuntimeError (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, unSymbol)
 
 eval :: (ExecIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
 eval env (Ast nodes) = do
     result <- runEvaluator $ mapM evalNode nodes
-    return $ case result of
+    pure $ case result of
         (Left err, finalEnv) -> (Left err, finalEnv)
         (Right objs, finalEnv) -> case objs of
             []    -> (Right $ LispList [], finalEnv)
@@ -34,23 +36,23 @@ throwRuntimeError pos msg = throwError $ RuntimeError pos msg
 
 evalNode :: forall m. (ExecIO m) => AstNode -> Evaluator m LispObject
 evalNode = \case
-    IntNode _ i -> return $ LispInt i
-    FloatNode _ f -> return $ LispFloat f
-    StringNode _ s -> return $ LispString s
+    IntNode _ i -> pure $ LispInt i
+    FloatNode _ f -> pure $ LispFloat f
+    StringNode _ s -> pure $ LispString s
     SymbolNode pos sym -> do
         env <- get
         case M.lookup sym systemValueBindingsMap of
-            Just obj -> return obj
+            Just obj -> pure obj
             Nothing  -> case RT.lookupBindingValue sym env of
-                Just obj -> return obj
+                Just obj -> pure obj
                 Nothing  -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
-    ListNode _ [] -> return $ LispList []
+    ListNode _ [] -> pure $ LispList []
     ListNode _ (SymbolNode fnPos fnName : args) -> do
         case M.lookup fnName (systemFunctionBindingsMap @m) of
             Just fn -> do
                 result <- fn args
                 case result of
-                    Right val -> return val
+                    Right val -> pure val
                     Left err  -> throwRuntimeError fnPos err
             Nothing -> throwRuntimeError fnPos $ "Unknown function: " <> unSymbol fnName
     ListNode _ _ -> error "Not implemented"
@@ -65,7 +67,7 @@ systemFunctionBindingsMap :: (ExecIO m) => M.Map Symbol ([AstNode] -> Evaluator 
 systemFunctionBindingsMap = M.fromList
     [ ("+", \args -> do
         argValues <- mapM evalNode args
-        return $ case argValues of
+        pure $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a + b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a + b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a + b)
@@ -75,7 +77,7 @@ systemFunctionBindingsMap = M.fromList
       )
     , ("-", \args -> do
         argValues <- mapM evalNode args
-        return $ case argValues of
+        pure $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a - b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a - b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a - b)
@@ -85,7 +87,7 @@ systemFunctionBindingsMap = M.fromList
       )
     , ("*", \args -> do
         argValues <- mapM evalNode args
-        return $ case argValues of
+        pure $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a * b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a * b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a * b)
@@ -95,7 +97,7 @@ systemFunctionBindingsMap = M.fromList
       )
     , ("/", \args -> do
         argValues <- mapM evalNode args
-        return $ case argValues of
+        pure $ case argValues of
             [LispInt a, LispInt b]     -> Right $ LispInt (a `div` b)
             [LispFloat a, LispFloat b] -> Right $ LispFloat (a / b)
             [LispInt a, LispFloat b]   -> Right $ LispFloat (fromIntegral a / b)
@@ -125,8 +127,8 @@ systemFunctionBindingsMap = M.fromList
                         LispString s -> Just $ T.unpack s
                         _            -> Nothing
                 lift $ lift $ RT.writeOutput $ display arg
-                return $ Right arg
-            _ -> return $ Left $ mkInvalidArgCountErrorText "princ" args
+                pure $ Right arg
+            _ -> pure $ Left $ mkInvalidArgCountErrorText "princ" args
       )
     , ("quote", \args -> pure $ case args of
         [arg] -> Right $ fix (\quote -> \case
@@ -142,9 +144,9 @@ systemFunctionBindingsMap = M.fromList
             [SymbolNode _ sym, value] -> do
                 value' <- evalNode value
                 modify' $ RT.insertGlobalValueBinding sym value'
-                return $ Right value'
-            [_, _] -> return $ Left "Variable name is not a symbol"
-            _ -> return $ Left $ mkInvalidArgCountErrorText "setq" args
+                pure $ Right value'
+            [_, _] -> pure $ Left "Variable name is not a symbol"
+            _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args
       )
     ]
   where

@@ -31,7 +31,7 @@ parse :: String -> Either SyntaxError Ast
 parse input = do
     (result, finalState) <- runParser parseAstNodeList input
     if null finalState.input
-        then return $ Ast result
+        then pure $ Ast result
         else throwSyntaxError finalState.position ("Unexpected character: " <> T.pack [head finalState.input])
   where
     runParser parser str = runIdentity $ runExceptT $ runStateT parser ParserState
@@ -60,7 +60,7 @@ eatWhileP predicate = do
     input <- gets input
     let token = takeWhile predicate input
     advance (length token)
-    return token
+    pure token
 
 eatWhitespace :: Parser ()
 eatWhitespace = void (eatWhileP isSpace)
@@ -73,18 +73,18 @@ assertCurrentCharP predicate = do
     input <- gets input
     let !_ = assertAlways (not $ null input) ()
     let !_ = assertAlways (predicate $ head input) ()
-    return ()
+    pure ()
 
 parseAstNodeList :: Parser [AstNode]
 parseAstNodeList = do
     eatWhitespace
     input <- gets input
     if null input || head input == ')'
-        then return []
+        then pure []
         else do
             node <- parseAstNode
             nodes <- parseAstNodeList
-            return $ node : nodes
+            pure $ node : nodes
 
 parseAstNode :: Parser AstNode
 parseAstNode = do
@@ -112,7 +112,7 @@ parseList = do
         Just ')' -> do
             advance 1
             endPos <- gets position
-            return $ ListNode (TextRange startPos endPos) nodes
+            pure $ ListNode (TextRange startPos endPos) nodes
         _ -> do
             curPos <- gets position
             throwSyntaxError curPos "Expected ')'"
@@ -126,7 +126,7 @@ parseQuote = do
     node <- parseAstNode
     endPos <- gets position
     let quote = SymbolNode (TextRange startPos (startPos + 1)) "quote"
-    return $ ListNode (TextRange startPos endPos) [quote, node]
+    pure $ ListNode (TextRange startPos endPos) [quote, node]
 
 parseString :: Parser AstNode
 parseString = do
@@ -143,17 +143,17 @@ parseString = do
                     Just c | c `elem` ['"', '\\'] -> do
                         advance 1
                         rest <- loop
-                        return $ str ++ [c] ++ rest
+                        pure $ str ++ [c] ++ rest
                     Just _ -> do
                         rest <- loop
-                        return $ str ++  rest
-                    Nothing -> return str
-            else return str
+                        pure $ str ++  rest
+                    Nothing -> pure str
+            else pure str
     gets (safeHead . input) >>= \case
         Just '"' -> do
             advance 1
             endPos <- gets position
-            return $ StringNode (TextRange startPos endPos) (T.pack str)
+            pure $ StringNode (TextRange startPos endPos) (T.pack str)
         _ -> do
             curPos <- gets position
             throwSyntaxError curPos "Expected '\"'"
@@ -165,7 +165,7 @@ parseIdent = do
     ident <- eatWhileP isIdentChar
     endPos <- gets position
     let range = TextRange startPos endPos
-    return $ case () of
+    pure $ case () of
         _ | Just int <- readMaybe ident -> IntNode range int
           | Just float <- readMaybe ident -> FloatNode range float
           | otherwise -> SymbolNode range (mkSymbol $ T.pack ident)
