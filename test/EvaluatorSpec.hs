@@ -48,36 +48,36 @@ spec = do
     describe "system function" $ do
         let s = TextRange 0 0
         describe "princ ok" $ do
-            it "integer" $ do
+            it "integer" $ do -- (princ 42)
                 let ast = Ast [ListNode s [SymbolNode s "princ", IntNode s 42]]
                 runEvalOutput ast `shouldBe` "42"
 
-            it "float" $ do
+            it "float" $ do -- (princ 3.14)
                 let ast = Ast [ListNode s [SymbolNode s "princ", FloatNode s 3.14]]
                 runEvalOutput ast `shouldBe` "3.14"
 
-            it "string" $ do
+            it "string" $ do -- (princ "hello")
                 let ast = Ast [ListNode s [SymbolNode s "princ", StringNode s "hello"]]
                 runEvalOutput ast `shouldBe` "hello"
 
-            it "list" $ do
+            it "list" $ do -- (princ '(1 2 3))
                 let ast = Ast [ListNode s [
                             SymbolNode s "princ", ListNode s [
                                 SymbolNode s "quote", ListNode s [
                                     IntNode s 1, IntNode s 2, IntNode s 3]]]]
                 runEvalOutput ast `shouldBe` "(1 2 3)"
 
-            it "nil" $ do
+            it "nil" $ do -- (princ nil)
                let nil_ast = Ast [ListNode s [SymbolNode s "princ", SymbolNode s "nil"]]
                runEvalOutput nil_ast `shouldBe` "NIL"
                let lst_ast = Ast [ListNode s [SymbolNode s "princ", ListNode s []]]
                runEvalOutput lst_ast `shouldBe` "NIL"
 
-            it "t" $ do
+            it "t" $ do -- (princ t)
                 let ast = Ast [ListNode s [SymbolNode s "princ", SymbolNode s "t"]]
                 runEvalOutput ast `shouldBe` "T"
 
-            it "multiple values" $ do
+            it "multiple values" $ do -- (princ 1) (princ "a b") (princ 2)
                 let ast = Ast [ ListNode s [SymbolNode s "princ", IntNode s 1]
                               , ListNode s [SymbolNode s "princ", StringNode s "a b"]
                               , ListNode s [SymbolNode s "princ", IntNode s 2]
@@ -85,17 +85,14 @@ spec = do
                 runEvalOutput ast `shouldBe` "1a b2"
 
         describe "princ error" $ do
-            it "no arguments" $ do
+            it "no arguments" $ do -- (princ)
                 let ast = Ast [ListNode (TextRange 0 7) [SymbolNode (TextRange 1 6) "princ"]]
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
 
-            it "too many arguments" $ do
-                let ast = Ast [ListNode (TextRange 0 11) [
-                                SymbolNode (TextRange 1 6) "princ",
-                                IntNode (TextRange 7 8) 1,
-                                IntNode (TextRange 9 10) 2]]
+            it "too many arguments" $ do -- (princ 1 2)
+                let ast = Ast [ListNode (TextRange 0 11) [SymbolNode (TextRange 1 6) "princ", IntNode s 1, IntNode s 2]]
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
