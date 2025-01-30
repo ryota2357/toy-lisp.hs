@@ -3,15 +3,16 @@
 
 module ToyLisp.Evaluator (eval) where
 
+import           Control.Monad (forM)
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
-import           Control.Monad.State  (StateT, get, lift, modify', runStateT)
+import           Control.Monad.State  (StateT, get, gets, lift, modify', runStateT)
 import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
 import qualified ToyLisp.Runtime      as RT
-import           ToyLisp.Runtime      (Environment, ExecIO, LispObject (..),
-                                       RuntimeError (..))
+import           ToyLisp.Runtime      (Environment (..), ExecIO, LispObject (..),
+                                       RuntimeError (..), FunctionInfo (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, unSymbol)
 
@@ -101,6 +102,20 @@ systemFunctionBindingsMap = M.fromList
             [LispFloat a, LispInt b]   -> Right $ LispFloat (a / fromIntegral b)
             [_, _]                     -> Left "Arguments are not numbers"
             _                          -> Left $ mkInvalidArgCountErrorText "/" args
+      )
+    , ("defun", \args -> case args of
+        SymbolNode _ fnName : ListNode _ params : body ->
+            case forM params (\case SymbolNode _ s -> Right s; _ -> Left ()) of
+                Right params' -> do
+                    frame <- gets currentLexicalFrame
+                    let fnInfo = FunctionInfo params' (Ast body) frame
+                    modify' $ RT.insertGlobalFunctionBinding fnName fnInfo
+                    pure $ Right $ LispFunction fnInfo
+                Left _ -> pure $ Left "Function parameters are not a list of symbols"
+        SymbolNode _ _ : invalidParam | not $ null invalidParam ->
+            pure $ Left "Function parameters are not a list"
+        _ : _ : _ -> pure $ Left "Function name is not a symbol"
+        _ -> pure $ Left $ mkInvalidArgCountErrorText "defun" args
       )
     , ("princ", \args -> do
         argValues <- mapM evalNode args

@@ -6,7 +6,7 @@ module ToyLisp.Runtime where
 import qualified Data.Map.Strict as M
 import qualified Data.Text       as T
 import           System.IO       (hFlush, hPutStr, stderr, stdout)
-import           ToyLisp.Syntax  (Ast, AstNode, Symbol, TextRange, unSymbol)
+import           ToyLisp.Syntax  (Ast, Symbol, TextRange, unSymbol)
 
 class (Monad m) => ExecIO m where
     writeOutput   :: String -> m ()
@@ -46,8 +46,9 @@ displayLispObjectWith override obj = case override obj of
         LispFunction _ -> "<function>"
 
 data FunctionInfo = FunctionInfo
-    { functionArgs :: [AstNode]
-    , functionBody :: Ast
+    { functionArgs        :: [Symbol]
+    , functionBody        :: Ast
+    , functionIntialFrame :: LexicalFrame
     } deriving (Show, Eq)
 
 data LexicalFrame = LexicalFrame
@@ -117,6 +118,13 @@ insertGlobalValueBinding :: Symbol -> LispObject -> Environment -> Environment
 insertGlobalValueBinding name value env = env
     { globalBindings = env.globalBindings
         { globalValueBindings = M.insert name value env.globalBindings.globalValueBindings
+        }
+    }
+
+insertGlobalFunctionBinding :: Symbol -> FunctionInfo -> Environment -> Environment
+insertGlobalFunctionBinding name value env = env
+    { globalBindings = env.globalBindings
+        { globalFunctionBindings = M.insert name value env.globalBindings.globalFunctionBindings
         }
     }
 

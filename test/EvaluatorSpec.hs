@@ -148,3 +148,66 @@ spec = do
                 let ast = Ast [ListNode (TextRange 0 10) [SymbolNode (TextRange 1 5) "setq", IntNode s 1, IntNode s 2]]
                 let (result, _, _) = runEval ast
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Variable name is not a symbol")
+
+        describe "defun ok" $ do
+            it "simple function" $ do -- (defun add (a b) (+ a b))
+                let ast = Ast [ListNode (TextRange 0 25) [
+                            SymbolNode s "defun", SymbolNode s "add",
+                                ListNode (TextRange 11 16) [SymbolNode (TextRange 12 13) "a", SymbolNode (TextRange 14 15) "b"],
+                                ListNode (TextRange 17 24) [SymbolNode (TextRange 18 19) "+", SymbolNode s "a", SymbolNode s "b"]]]
+                let (_, env, _) = runEval ast
+                M.lookup "add" env.globalBindings.globalFunctionBindings
+                    `shouldBe`
+                    Just (RT.FunctionInfo
+                        { RT.functionArgs = ["a", "b"]
+                        , RT.functionBody = Ast [ListNode (TextRange 17 24) [SymbolNode (TextRange 18 19) "+", SymbolNode s "a", SymbolNode s "b"]]
+                        , RT.functionIntialFrame = env.currentLexicalFrame
+                        })
+
+            it "empty body" $ do -- (defun empty ())
+                let ast = Ast [ListNode (TextRange 0 16) [SymbolNode s "defun", SymbolNode s "empty", ListNode s []]]
+                let (_, env, _) = runEval ast
+                M.lookup "empty" env.globalBindings.globalFunctionBindings
+                    `shouldBe`
+                    Just (RT.FunctionInfo
+                        { RT.functionArgs = []
+                        , RT.functionBody = Ast []
+                        , RT.functionIntialFrame = env.currentLexicalFrame
+                        })
+
+            it "many bodies" $ do -- (defun many () 1 2 3)
+                let ast = Ast [ListNode (TextRange 0 20) [SymbolNode s "defun", SymbolNode s "many", ListNode s [], IntNode s 1, IntNode s 2, IntNode s 3]]
+                let (_, env, _) = runEval ast
+                M.lookup "many" env.globalBindings.globalFunctionBindings
+                    `shouldBe`
+                    Just (RT.FunctionInfo
+                        { RT.functionArgs = []
+                        , RT.functionBody = Ast [IntNode s 1, IntNode s 2, IntNode s 3]
+                        , RT.functionIntialFrame = env.currentLexicalFrame
+                        })
+
+        describe "defun error" $ do
+            it "no arguments" $ do -- (defun)
+                let ast = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "defun"]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for DEFUN: 0")
+
+            it "one argument" $ do -- (defun add)
+                let ast = Ast [ListNode (TextRange 0 11) [SymbolNode (TextRange 1 5) "defun", SymbolNode s "add"]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for DEFUN: 1")
+
+            it "invalid function name" $ do -- (defun 1 ())
+                let ast = Ast [ListNode (TextRange 0 15) [SymbolNode (TextRange 1 5) "defun", IntNode s 1, ListNode s []]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Function name is not a symbol")
+
+            it "parameter is not a list" $ do -- (defun add a)
+                let ast = Ast [ListNode (TextRange 0 14) [SymbolNode (TextRange 1 5) "defun", SymbolNode s "add", SymbolNode s "a"]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Function parameters are not a list")
+
+            it "parameter is not a list of symbols" $ do -- (defun add (a 1))
+                let ast = Ast [ListNode (TextRange 0 16) [SymbolNode (TextRange 1 5) "defun", SymbolNode s "add", ListNode s [SymbolNode s "a", IntNode s 1]]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Function parameters are not a list of symbols")
