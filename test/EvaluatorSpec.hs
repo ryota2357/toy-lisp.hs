@@ -59,6 +59,7 @@ spec = do
 
     describe "system function" $ do
         let s = TextRange 0 0
+
         describe "princ ok" $ do
             it "integer" $ do -- (princ 42)
                 let ast = Ast [ListNode s [SymbolNode s "princ", IntNode s 42]]

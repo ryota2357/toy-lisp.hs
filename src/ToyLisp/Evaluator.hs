@@ -141,12 +141,12 @@ systemFunctionBindingsMap = M.fromList
         _ -> Left $ mkInvalidArgCountErrorText "quote" args
       )
     , ("setq", \args -> case args of
-            [SymbolNode _ sym, value] -> do
-                value' <- evalNode value
-                modify' $ RT.insertGlobalValueBinding sym value'
-                pure $ Right value'
-            [_, _] -> pure $ Left "Variable name is not a symbol"
-            _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args
+        [SymbolNode _ sym, value] -> do
+            value' <- evalNode value
+            modify' $ RT.insertGlobalValueBinding sym value'
+            pure $ Right value'
+        [_, _] -> pure $ Left "Variable name is not a symbol"
+        _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args
       )
     ]
   where
