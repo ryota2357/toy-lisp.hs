@@ -62,8 +62,8 @@ data SpecialFrame = SpecialFrame
     } deriving (Show, Eq)
 
 data GlobalBindings = GlobalBindings
-    { glovalValueBindings    :: M.Map Symbol LispObject
-    , glovalFunctionBindings :: M.Map Symbol FunctionInfo
+    { globalValueBindings    :: M.Map Symbol LispObject
+    , globalFunctionBindings :: M.Map Symbol FunctionInfo
     } deriving (Show, Eq)
 
 data Environment = Environment
@@ -97,7 +97,7 @@ lookupBindingValue symbol env = do
         Nothing  -> case frame.parentLexicalFrame of
             Just parent -> lookupLexicalBindings name parent
             Nothing     -> Nothing
-    lookupGlobalBindings name bindings = M.lookup name bindings.glovalValueBindings
+    lookupGlobalBindings name bindings = M.lookup name bindings.globalValueBindings
 
 lookupFunctinBinding :: Symbol -> Environment -> Maybe FunctionInfo
 lookupFunctinBinding symbol env = do
@@ -111,7 +111,7 @@ lookupFunctinBinding symbol env = do
         Nothing  -> case frame.parentLexicalFrame of
             Just parent -> lookupLexicalBindings name parent
             Nothing     -> Nothing
-    lookupGlobalBindings name bindings = M.lookup name bindings.glovalFunctionBindings
+    lookupGlobalBindings name bindings = M.lookup name bindings.globalFunctionBindings
 
 data RuntimeError = RuntimeError
     { runtimeErrorPosition :: TextRange

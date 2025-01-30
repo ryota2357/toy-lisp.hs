@@ -130,7 +130,7 @@ systemFunctionBindingsMap = M.fromList
                 value' <- evalNode value
                 modify' $ \env -> env
                     { globalBindings = env.globalBindings
-                        { glovalValueBindings = M.insert sym value' env.globalBindings.glovalValueBindings
+                        { globalValueBindings = M.insert sym value' env.globalBindings.globalValueBindings
                         }
                     }
                 return $ Right value'

@@ -105,23 +105,23 @@ spec = do
             it "set unbound symbol" $ do -- (setq a 42)
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", IntNode s 42]]
                 let (_, env, _) = runEval ast
-                M.lookup "a" env.globalBindings.glovalValueBindings `shouldBe` Just (RT.LispInt 42)
+                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 42)
 
             it "set bound symbol" $ do -- (setq a 3.14) ; a is already bound to 3
                 let env = RT.emptyEnvironment { RT.globalBindings = RT.GlobalBindings
-                        { RT.glovalValueBindings = M.singleton "a" (RT.LispInt 3)
-                        , RT.glovalFunctionBindings = M.empty
+                        { RT.globalValueBindings = M.singleton "a" (RT.LispInt 3)
+                        , RT.globalFunctionBindings = M.empty
                         }}
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", FloatNode s 3.14]]
                 let (_, env', _) = runEvalWith env ast
-                M.lookup "a" env'.globalBindings.glovalValueBindings `shouldBe` Just (RT.LispFloat 3.14)
+                M.lookup "a" env'.globalBindings.globalValueBindings `shouldBe` Just (RT.LispFloat 3.14)
 
             it "set evaluated value" $ do
                 let ast = Ast [ListNode s [
                             SymbolNode s "setq", SymbolNode s "a", ListNode s [
                                 SymbolNode s "+", IntNode s 1, IntNode s 2]]]
                 let (_, env, _) = runEval ast
-                M.lookup "a" env.globalBindings.glovalValueBindings `shouldBe` Just (RT.LispInt 3)
+                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
 
         describe "setq error" $ do
             it "no arguments" $ do -- (setq)
