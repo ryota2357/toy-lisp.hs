@@ -16,7 +16,7 @@ import           ToyLisp.Runtime      (Environment (..), ExecIO,
                                        FunctionInfo (..), LispObject (..),
                                        RuntimeError (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
-                                       TextRange, unSymbol)
+                                       TextRange, astNodePosition, unSymbol)
 
 eval :: (ExecIO m) => Environment -> Ast -> m (Either RuntimeError LispObject, Environment)
 eval env (Ast nodes) = do
@@ -48,14 +48,20 @@ evalNode = \case
                 Nothing  -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
     ListNode _ [] -> pure $ LispList []
     ListNode _ (SymbolNode fnPos fnName : args) -> do
+        env <- get
         case M.lookup fnName (systemFunctionBindingsMap @m) of
             Just fn -> do
                 result <- fn args
                 case result of
                     Right val -> pure val
                     Left err  -> throwRuntimeError fnPos err
-            Nothing -> throwRuntimeError fnPos $ "Unknown function: " <> unSymbol fnName
-    ListNode _ _ -> error "Not implemented"
+            Nothing -> case RT.lookupFunctinBinding fnName env of
+                Just fnInfo -> callFunction fnInfo args
+                Nothing     -> throwRuntimeError fnPos $ "Undefined function: " <> unSymbol fnName
+    ListNode _ (notSymbolNode : _) -> throwRuntimeError (astNodePosition notSymbolNode) "Function name is not a symbol"
+
+callFunction :: (ExecIO m) => FunctionInfo -> [AstNode] -> Evaluator m LispObject
+callFunction = error "Not implemented"
 
 systemValueBindingsMap :: M.Map Symbol LispObject
 systemValueBindingsMap = M.fromList
@@ -63,7 +69,7 @@ systemValueBindingsMap = M.fromList
     , ("t", LispTrue)
     ]
 
-systemFunctionBindingsMap :: (ExecIO m) => M.Map Symbol ([AstNode] -> Evaluator m (Either T.Text LispObject))
+systemFunctionBindingsMap :: forall m. (ExecIO m) => M.Map Symbol ([AstNode] -> Evaluator m (Either T.Text LispObject))
 systemFunctionBindingsMap = M.fromList
     [ ("+", \args -> do
         argValues <- mapM evalNode args
@@ -127,8 +133,9 @@ systemFunctionBindingsMap = M.fromList
                 ) e es
       )
     , ("defun", \args -> case args of
-        SymbolNode _ fnName : ListNode _ params : body ->
-            case forM params (\case SymbolNode _ s -> Right s; _ -> Left ()) of
+        SymbolNode _ fnName : ListNode _ params : body -> if fnName `M.member` (systemFunctionBindingsMap @m)
+            then pure $ Left $ "Redefining " <> unSymbol fnName <> " is not allowed"
+            else case forM params (\case SymbolNode _ s -> Right s; _ -> Left ()) of
                 Right params' -> do
                     frame <- gets currentLexicalFrame
                     let fnInfo = FunctionInfo params' (Ast body) frame
@@ -162,10 +169,12 @@ systemFunctionBindingsMap = M.fromList
         _ -> Left $ mkInvalidArgCountErrorText "quote" args
       )
     , ("setq", \args -> case args of
-        [SymbolNode _ sym, value] -> do
-            value' <- evalNode value
-            modify' $ RT.insertGlobalValueBinding sym value'
-            pure $ Right value'
+        [SymbolNode _ sym, value] -> if sym `M.member` systemValueBindingsMap
+            then pure $ Left $ unSymbol sym <> " is a constant and thus cannot be set"
+            else do
+                value' <- evalNode value
+                modify' $ RT.insertGlobalValueBinding sym value'
+                pure $ Right value'
         [_, _] -> pure $ Left "Variable name is not a symbol"
         _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args
       )
