@@ -113,6 +113,13 @@ lookupFunctinBinding symbol env = do
             Nothing     -> Nothing
     lookupGlobalBindings name bindings = M.lookup name bindings.globalFunctionBindings
 
+insertGlobalValueBinding :: Symbol -> LispObject -> Environment -> Environment
+insertGlobalValueBinding name value env = env
+    { globalBindings = env.globalBindings
+        { globalValueBindings = M.insert name value env.globalBindings.globalValueBindings
+        }
+    }
+
 data RuntimeError = RuntimeError
     { runtimeErrorPosition :: TextRange
     , runtimeErrorMessage  :: T.Text

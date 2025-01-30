@@ -1,6 +1,5 @@
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module ToyLisp.Evaluator (eval) where
 
@@ -11,8 +10,7 @@ import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
 import qualified Data.Text            as T
 import qualified ToyLisp.Runtime      as RT
-import           ToyLisp.Runtime      (Environment (..), ExecIO,
-                                       GlobalBindings (..), LispObject (..),
+import           ToyLisp.Runtime      (Environment, ExecIO, LispObject (..),
                                        RuntimeError (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, unSymbol)
@@ -128,11 +126,7 @@ systemFunctionBindingsMap = M.fromList
     , ("setq", \args -> case args of
             [SymbolNode _ sym, value] -> do
                 value' <- evalNode value
-                modify' $ \env -> env
-                    { globalBindings = env.globalBindings
-                        { globalValueBindings = M.insert sym value' env.globalBindings.globalValueBindings
-                        }
-                    }
+                modify' $ RT.insertGlobalValueBinding sym value'
                 return $ Right value'
             [_, _] -> return $ Left "Variable name is not a symbol"
             _ -> return $ Left $ mkInvalidArgCountErrorText "setq" args

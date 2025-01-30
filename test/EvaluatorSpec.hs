@@ -108,10 +108,7 @@ spec = do
                 M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 42)
 
             it "set bound symbol" $ do -- (setq a 3.14) ; a is already bound to 3
-                let env = RT.emptyEnvironment { RT.globalBindings = RT.GlobalBindings
-                        { RT.globalValueBindings = M.singleton "a" (RT.LispInt 3)
-                        , RT.globalFunctionBindings = M.empty
-                        }}
+                let env = RT.insertGlobalValueBinding "a" (RT.LispInt 3) RT.emptyEnvironment
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", FloatNode s 3.14]]
                 let (_, env', _) = runEvalWith env ast
                 M.lookup "a" env'.globalBindings.globalValueBindings `shouldBe` Just (RT.LispFloat 3.14)
