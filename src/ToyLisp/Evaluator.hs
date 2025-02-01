@@ -125,7 +125,7 @@ systemFunctionBindingsMap = M.fromList
     , ("-", \args -> do
         argValues <- mapM evalNode args
         pure $ case argValues of
-            [] -> Left $ mkInvalidArgCountErrorText "-" []
+            [] -> Left $ mkInvalidArgCountErrorText 0 ">= 1"
             [e] -> case e of
                 LispInt i   -> Right $ LispInt (-i)
                 LispFloat f -> Right $ LispFloat (-f)
@@ -152,7 +152,7 @@ systemFunctionBindingsMap = M.fromList
         argValues <- mapM evalNode args
         let divideByZeroMsg = "Division by zero"
         pure $ case argValues of
-            [] -> Left $ mkInvalidArgCountErrorText "/" []
+            [] -> Left $ mkInvalidArgCountErrorText 0 ">= 1"
             [e] -> case e of
                 LispInt 0   -> Left divideByZeroMsg
                 LispFloat 0 -> Left divideByZeroMsg
@@ -188,7 +188,7 @@ systemFunctionBindingsMap = M.fromList
         SymbolNode _ _ : invalidParam | not $ null invalidParam ->
             pure $ Left "Function parameters are not a list"
         _ : _ : _ -> pure $ Left "Function name is not a symbol"
-        _ -> pure $ Left $ mkInvalidArgCountErrorText "defun" args
+        _ -> pure $ Left $ mkInvalidArgCountErrorText (length args) ">= 2"
       )
     , ("princ", \args -> do
         argValues <- mapM evalNode args
@@ -199,7 +199,7 @@ systemFunctionBindingsMap = M.fromList
                         _            -> Nothing
                 lift . lift $ RT.writeOutput $ display arg
                 pure $ Right arg
-            _ -> pure $ Left $ mkInvalidArgCountErrorText "princ" args
+            _ -> pure $ Left $ mkInvalidArgCountErrorText (length args) "1"
       )
     , ("quote", \args -> pure $ case args of
         [arg] -> Right $ fix (\quote -> \case
@@ -209,7 +209,7 @@ systemFunctionBindingsMap = M.fromList
             SymbolNode _ sym -> LispSymbol sym
             ListNode _ nodes -> LispList $ map quote nodes
             ) arg
-        _ -> Left $ mkInvalidArgCountErrorText "quote" args
+        _ -> Left $ mkInvalidArgCountErrorText (length args) "1"
       )
     , ("setq", \args -> case args of
         [SymbolNode _ sym, value] -> if sym `M.member` systemValueBindingsMap
@@ -221,7 +221,7 @@ systemFunctionBindingsMap = M.fromList
                     }
                 pure $ Right value'
         [_, _] -> pure $ Left "Variable name is not a symbol"
-        _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args
+        _ -> pure $ Left $ mkInvalidArgCountErrorText (length args) "2"
       )
     , ("type-of", \args -> do
         argValues <- mapM evalNode args
@@ -234,10 +234,12 @@ systemFunctionBindingsMap = M.fromList
                     LispList _     -> "LIST"
                     LispFunction _ -> "FUNCTION"
                     LispTrue       -> "T"
-            _ -> Left $ mkInvalidArgCountErrorText "type-of" args
+            _ -> Left $ mkInvalidArgCountErrorText (length args) "1"
       )
     ]
   where
-    mkInvalidArgCountErrorText fnName args = "Invalid number of arguments for " <> unSymbol fnName <> ": " <> argsCountText
+    mkInvalidArgCountErrorText :: Int -> String -> T.Text
+    mkInvalidArgCountErrorText given expected = "Wrong number of arguments: given " <> givenText <> ", expected " <> expectedText
       where
-        argsCountText = T.pack $ show $ length args
+        givenText = T.pack $ show given
+        expectedText = T.pack expected

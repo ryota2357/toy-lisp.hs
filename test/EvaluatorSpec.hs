@@ -102,13 +102,13 @@ spec = do
                 let ast = Ast [ListNode (TextRange 0 7) [SymbolNode (TextRange 1 6) "princ"]]
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 0")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Wrong number of arguments: given 0, expected 1")
 
             it "too many arguments" $ do -- (princ 1 2)
                 let ast = Ast [ListNode (TextRange 0 11) [SymbolNode (TextRange 1 6) "princ", IntNode s 1, IntNode s 2]]
                 let (result, _, io) = runEval ast
                 io.testOutput `shouldBe` ""
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Invalid number of arguments for PRINC: 2")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Wrong number of arguments: given 2, expected 1")
 
         describe "arithmetic operations" $ do
             let princAst node = Ast [ListNode s [SymbolNode s "princ", node]]
@@ -128,7 +128,7 @@ spec = do
             it "subtraction" $ do
                 let ast_0 = princAst $ ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "-"] -- (princ (-))
                 let (result, _, _) = runEvalWith RT.emptyEnvironment ast_0
-                result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Invalid number of arguments for -: 0")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Wrong number of arguments: given 0, expected >= 1")
                 let ast_i1 = princAst $ ListNode s [SymbolNode s "-", IntNode s 2]
                 runEvalOutput ast_i1 `shouldBe` "-2"
                 let ast_f1 = princAst $ ListNode s [SymbolNode s "-", FloatNode s 2.71]
@@ -153,7 +153,7 @@ spec = do
             it "division" $ do
                 let ast_0 = princAst $ ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "/"] -- (princ (/))
                 let (result, _, _) = runEvalWith RT.emptyEnvironment ast_0
-                result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Invalid number of arguments for /: 0")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Wrong number of arguments: given 0, expected >= 1")
                 let ast_i1 = princAst $ ListNode s [SymbolNode s "/", IntNode s 2]
                 runEvalOutput ast_i1 `shouldBe` "0.5"
                 let ast_f1 = princAst $ ListNode s [SymbolNode s "/", FloatNode s 4]
@@ -203,17 +203,17 @@ spec = do
             it "no arguments" $ do -- (setq)
                 let ast = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "setq"]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for SETQ: 0")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 0, expected 2")
 
             it "one argument" $ do -- (setq 1)
                 let ast = Ast [ListNode (TextRange 0 8) [SymbolNode (TextRange 1 4) "setq", IntNode s 1]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 4) "Invalid number of arguments for SETQ: 1")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 4) "Wrong number of arguments: given 1, expected 2")
 
             it "three arguments" $ do -- (setq a 1 2)
                 let ast = Ast [ListNode (TextRange 0 13) [SymbolNode (TextRange 1 5) "setq", SymbolNode s "a", IntNode s 1, IntNode s 2]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for SETQ: 3")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 3, expected 2")
 
             it "first argument is not symbol" $ do -- (setq 1 2)
                 let ast = Ast [ListNode (TextRange 0 10) [SymbolNode (TextRange 1 5) "setq", IntNode s 1, IntNode s 2]]
@@ -261,12 +261,12 @@ spec = do
             it "no arguments" $ do -- (defun)
                 let ast = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "defun"]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for DEFUN: 0")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 0, expected >= 2")
 
             it "one argument" $ do -- (defun add)
                 let ast = Ast [ListNode (TextRange 0 11) [SymbolNode (TextRange 1 5) "defun", SymbolNode s "add"]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Invalid number of arguments for DEFUN: 1")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 1, expected >= 2")
 
             it "invalid function name" $ do -- (defun 1 ())
                 let ast = Ast [ListNode (TextRange 0 15) [SymbolNode (TextRange 1 5) "defun", IntNode s 1, ListNode s []]]
