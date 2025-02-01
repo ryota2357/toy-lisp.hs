@@ -52,11 +52,27 @@ data FunctionInfo = FunctionInfo
     } deriving (Show, Eq)
 
 class Bindings a where
-    valueBindings :: a -> M.Map Symbol LispObject
-    functionBindings :: a -> M.Map Symbol FunctionInfo
+    lookupValueBinding :: Symbol -> a -> Maybe LispObject
+    lookupFunctionBinding :: Symbol -> a -> Maybe FunctionInfo
+    insertValueBinding :: Symbol -> LispObject -> a -> a
+    insertFunctionBinding :: Symbol -> FunctionInfo -> a -> a
 
 class Bindings a => Frame a where
     parentFrame :: a -> Maybe a
+
+lookupFrameValueBinding :: Frame a => Symbol -> a -> Maybe LispObject
+lookupFrameValueBinding name frame = case lookupValueBinding name frame of
+    Just obj -> Just obj
+    Nothing  -> case parentFrame frame of
+        Just parent -> lookupFrameValueBinding name parent
+        Nothing     -> Nothing
+
+lookupFrameFunctionBinding :: Frame a => Symbol -> a -> Maybe FunctionInfo
+lookupFrameFunctionBinding name frame = case lookupFunctionBinding name frame of
+    Just obj -> Just obj
+    Nothing  -> case parentFrame frame of
+        Just parent -> lookupFrameFunctionBinding name parent
+        Nothing     -> Nothing
 
 data LexicalFrame = LexicalFrame
     { lexicalValueBindings    :: M.Map Symbol LispObject
@@ -65,31 +81,17 @@ data LexicalFrame = LexicalFrame
     } deriving (Show, Eq)
 
 instance Bindings LexicalFrame where
-    valueBindings = lexicalValueBindings
-    functionBindings = lexicalFunctionBindings
-
-lookupValueBinding :: Bindings a => Symbol -> a -> Maybe LispObject
-lookupValueBinding name bindings = M.lookup name (valueBindings bindings)
-
-lookupFunctionBinding :: Bindings a => Symbol -> a -> Maybe FunctionInfo
-lookupFunctionBinding name bindings = M.lookup name (functionBindings bindings)
+    lookupValueBinding name = M.lookup name . lexicalValueBindings
+    lookupFunctionBinding name = M.lookup name . lexicalFunctionBindings
+    insertValueBinding name value frame = frame
+        { lexicalValueBindings = M.insert name value frame.lexicalValueBindings
+        }
+    insertFunctionBinding name value frame = frame
+        { lexicalFunctionBindings = M.insert name value frame.lexicalFunctionBindings
+        }
 
 instance Frame LexicalFrame where
     parentFrame = parentLexicalFrame
-
-lookupFrameValueBinding :: Frame a => Symbol -> a -> Maybe LispObject
-lookupFrameValueBinding name frame = case M.lookup name (valueBindings frame) of
-    Just obj -> Just obj
-    Nothing  -> case parentFrame frame of
-        Just parent -> lookupFrameValueBinding name parent
-        Nothing     -> Nothing
-
-lookupFrameFunctionBinding :: Frame a => Symbol -> a -> Maybe FunctionInfo
-lookupFrameFunctionBinding name frame = case M.lookup name (functionBindings frame) of
-    Just obj -> Just obj
-    Nothing  -> case parentFrame frame of
-        Just parent -> lookupFrameFunctionBinding name parent
-        Nothing     -> Nothing
 
 data SpecialFrame = SpecialFrame
     { specialValueBindings    :: M.Map Symbol LispObject
@@ -98,8 +100,14 @@ data SpecialFrame = SpecialFrame
     } deriving (Show, Eq)
 
 instance Bindings SpecialFrame where
-    valueBindings = specialValueBindings
-    functionBindings = specialFunctionBindings
+    lookupValueBinding name = M.lookup name . specialValueBindings
+    lookupFunctionBinding name = M.lookup name . specialFunctionBindings
+    insertValueBinding name value frame = frame
+        { specialValueBindings = M.insert name value frame.specialValueBindings
+        }
+    insertFunctionBinding name value frame = frame
+        { specialFunctionBindings = M.insert name value frame.specialFunctionBindings
+        }
 
 instance Frame SpecialFrame where
     parentFrame = parentSpecialFrame
@@ -110,8 +118,14 @@ data GlobalBindings = GlobalBindings
     } deriving (Show, Eq)
 
 instance Bindings GlobalBindings where
-    valueBindings = globalValueBindings
-    functionBindings = globalFunctionBindings
+    lookupValueBinding name = M.lookup name . globalValueBindings
+    lookupFunctionBinding name = M.lookup name . globalFunctionBindings
+    insertValueBinding name value bindings = bindings
+        { globalValueBindings = M.insert name value bindings.globalValueBindings
+        }
+    insertFunctionBinding name value bindings = bindings
+        { globalFunctionBindings = M.insert name value bindings.globalFunctionBindings
+        }
 
 data Environment = Environment
     { globalBindings      :: GlobalBindings
