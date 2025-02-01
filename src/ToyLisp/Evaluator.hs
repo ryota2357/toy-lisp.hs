@@ -7,7 +7,7 @@ module ToyLisp.Evaluator (eval) where
 import           Control.Monad        (foldM, forM)
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
-import           Control.Monad.State  (StateT, get, gets, lift, modify',
+import           Control.Monad.State  (StateT, get, gets, lift, modify', put,
                                        runStateT)
 import           Data.Function        (fix)
 import qualified Data.Map.Strict      as M
@@ -49,22 +49,59 @@ evalNode = \case
               | Just obj <- RT.lookupValueBinding sym env.globalBindings -> pure obj
               | otherwise -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
     ListNode _ [] -> pure $ LispList []
-    ListNode _ (SymbolNode fnPos fnName : args) -> do
-        env <- get
+    ListNode _ (SymbolNode fnPos fnName : args) ->
         case M.lookup fnName (systemFunctionBindingsMap @m) of
             Just fn -> do
                 result <- fn args
                 case result of
                     Right val -> pure val
                     Left err  -> throwRuntimeError fnPos err
-            Nothing -> case RT.lookupFrameFunctionBinding fnName env.currentLexicalFrame of
-                Just fnInfo -> callFunction fnInfo args
-                Nothing     -> throwRuntimeError fnPos $ "Undefined function: " <> unSymbol fnName
+            Nothing -> do
+                lexicalFrame <- gets currentLexicalFrame
+                case RT.lookupFrameFunctionBinding fnName lexicalFrame of
+                    Just fnInfo -> do
+                        argValues <- mapM evalNode args
+                        result <- callFunction fnInfo argValues
+                        case result of
+                            Right val -> pure val
+                            Left err  -> throwRuntimeError fnPos err
+                    Nothing -> do
+                        -- Evaluate arguments first because the global function may be defined/updated by the arguments themselves
+                        argValues <- mapM evalNode args
+                        globals <- gets globalBindings -- Get the updated global bindings
+                        case RT.lookupFunctionBinding fnName globals of
+                            Just fnInfo -> do
+                                result <- callFunction fnInfo argValues
+                                case result of
+                                    Right val -> pure val
+                                    Left err  -> throwRuntimeError fnPos err
+                            Nothing -> throwRuntimeError fnPos $ "Undefined function: " <> unSymbol fnName
     ListNode _ (notSymbolNode : _) ->
         throwRuntimeError (astNodePosition notSymbolNode) "Function name is not a symbol"
 
-callFunction :: (ExecIO m) => FunctionInfo -> [AstNode] -> Evaluator m LispObject
-callFunction = error "Not implemented"
+callFunction :: forall m. (ExecIO m) => FunctionInfo -> [LispObject] -> Evaluator m (Either T.Text LispObject)
+callFunction fn args =
+    let argCount   = length args
+        paramCount = length fn.functionParams
+    in if argCount /= paramCount
+        then
+            let argCountText  = T.pack $ "got " ++ show argCount
+                paramCountText = T.pack $ "expected " ++ show paramCount
+            in pure $ Left $ "Wrong number of arguments: got " <> argCountText <> ", expected " <> paramCountText
+        else do
+            env <- get
+            let nextEnv = env
+                    { currentLexicalFrame = foldl
+                        (\frame (param, arg) -> RT.insertValueBinding param arg frame)
+                        fn.functionIntialFrame
+                        (zip fn.functionParams args)
+                    }
+            (result, nextEnv') <- lift . lift $ eval nextEnv fn.functionBody
+            case result of
+                Left err -> throwError err
+                Right obj  -> do
+                    put env { globalBindings = nextEnv'.globalBindings }
+                    pure $ Right obj
 
 systemValueBindingsMap :: M.Map Symbol LispObject
 systemValueBindingsMap = M.fromList
