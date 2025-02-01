@@ -221,36 +221,39 @@ spec = do
         describe "defun ok" $ do
             it "simple function" $ do -- (defun add (a b) (+ a b))
                 let ast = Ast [ListNode (TextRange 0 25) [
-                            SymbolNode s "defun", SymbolNode s "add",
+                            SymbolNode s "defun", SymbolNode (TextRange 7 10) "add",
                                 ListNode (TextRange 11 16) [SymbolNode (TextRange 12 13) "a", SymbolNode (TextRange 14 15) "b"],
                                 ListNode (TextRange 17 24) [SymbolNode (TextRange 18 19) "+", SymbolNode s "a", SymbolNode s "b"]]]
                 let (_, env, _) = runEval ast
                 M.lookup "add" env.globalBindings.globalFunctionBindings
                     `shouldBe`
                     Just (RT.FunctionInfo
-                        { RT.functionArgs = ["a", "b"]
+                        { RT.functionPosition = TextRange 7 10
+                        , RT.functionParams = ["a", "b"]
                         , RT.functionBody = Ast [ListNode (TextRange 17 24) [SymbolNode (TextRange 18 19) "+", SymbolNode s "a", SymbolNode s "b"]]
                         , RT.functionIntialFrame = env.currentLexicalFrame
                         })
 
             it "empty body" $ do -- (defun empty ())
-                let ast = Ast [ListNode (TextRange 0 16) [SymbolNode s "defun", SymbolNode s "empty", ListNode s []]]
+                let ast = Ast [ListNode s [SymbolNode s "defun", SymbolNode s "empty", ListNode s []]]
                 let (_, env, _) = runEval ast
                 M.lookup "empty" env.globalBindings.globalFunctionBindings
                     `shouldBe`
                     Just (RT.FunctionInfo
-                        { RT.functionArgs = []
+                        { RT.functionPosition = s
+                        , RT.functionParams = []
                         , RT.functionBody = Ast []
                         , RT.functionIntialFrame = env.currentLexicalFrame
                         })
 
             it "many bodies" $ do -- (defun many () 1 2 3)
-                let ast = Ast [ListNode (TextRange 0 20) [SymbolNode s "defun", SymbolNode s "many", ListNode s [], IntNode s 1, IntNode s 2, IntNode s 3]]
+                let ast = Ast [ListNode s [SymbolNode s "defun", SymbolNode s "many", ListNode s [], IntNode s 1, IntNode s 2, IntNode s 3]]
                 let (_, env, _) = runEval ast
                 M.lookup "many" env.globalBindings.globalFunctionBindings
                     `shouldBe`
                     Just (RT.FunctionInfo
-                        { RT.functionArgs = []
+                        { RT.functionPosition = s
+                        , RT.functionParams = []
                         , RT.functionBody = Ast [IntNode s 1, IntNode s 2, IntNode s 3]
                         , RT.functionIntialFrame = env.currentLexicalFrame
                         })

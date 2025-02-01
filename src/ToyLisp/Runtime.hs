@@ -46,7 +46,8 @@ displayLispObjectWith override obj = case override obj of
         LispFunction _ -> "<function>"
 
 data FunctionInfo = FunctionInfo
-    { functionArgs        :: [Symbol]
+    { functionPosition    :: TextRange
+    , functionParams      :: [Symbol]
     , functionBody        :: Ast
     , functionIntialFrame :: LexicalFrame
     } deriving (Show, Eq)
