@@ -1,5 +1,6 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings   #-}
 
 module ToyLisp.Evaluator (eval) where
 
@@ -41,11 +42,12 @@ evalNode = \case
     StringNode _ s -> pure $ LispString s
     SymbolNode pos sym -> do
         env <- get
-        case M.lookup sym systemValueBindingsMap of
-            Just obj -> pure obj
-            Nothing  -> case RT.lookupValueBinding sym env of
-                Just obj -> pure obj
-                Nothing  -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
+        case () of
+            _ | Just obj <- M.lookup sym systemValueBindingsMap -> pure obj
+              | Just obj <- RT.lookupFrameValueBinding sym env.currentLexicalFrame -> pure obj
+              | Just obj <- RT.lookupFrameValueBinding sym env.currentSpecialFrame -> pure obj
+              | Just obj <- RT.lookupValueBinding sym env.globalBindings -> pure obj
+              | otherwise -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
     ListNode _ [] -> pure $ LispList []
     ListNode _ (SymbolNode fnPos fnName : args) -> do
         env <- get
@@ -55,10 +57,11 @@ evalNode = \case
                 case result of
                     Right val -> pure val
                     Left err  -> throwRuntimeError fnPos err
-            Nothing -> case RT.lookupFunctinBinding fnName env of
+            Nothing -> case RT.lookupFrameFunctionBinding fnName env.currentLexicalFrame of
                 Just fnInfo -> callFunction fnInfo args
                 Nothing     -> throwRuntimeError fnPos $ "Undefined function: " <> unSymbol fnName
-    ListNode _ (notSymbolNode : _) -> throwRuntimeError (astNodePosition notSymbolNode) "Function name is not a symbol"
+    ListNode _ (notSymbolNode : _) ->
+        throwRuntimeError (astNodePosition notSymbolNode) "Function name is not a symbol"
 
 callFunction :: (ExecIO m) => FunctionInfo -> [AstNode] -> Evaluator m LispObject
 callFunction = error "Not implemented"

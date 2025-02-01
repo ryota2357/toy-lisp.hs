@@ -52,21 +52,67 @@ data FunctionInfo = FunctionInfo
     , functionIntialFrame :: LexicalFrame
     } deriving (Show, Eq)
 
+class Bindings a where
+    valueBindings :: a -> M.Map Symbol LispObject
+    functionBindings :: a -> M.Map Symbol FunctionInfo
+
+class Bindings a => Frame a where
+    parentFrame :: a -> Maybe a
+
 data LexicalFrame = LexicalFrame
-    { valueBindings      :: M.Map Symbol LispObject
-    , functionBindings   :: M.Map Symbol FunctionInfo
-    , parentLexicalFrame :: Maybe LexicalFrame
+    { lexicalValueBindings    :: M.Map Symbol LispObject
+    , lexicalFunctionBindings :: M.Map Symbol FunctionInfo
+    , parentLexicalFrame      :: Maybe LexicalFrame
     } deriving (Show, Eq)
 
+instance Bindings LexicalFrame where
+    valueBindings = lexicalValueBindings
+    functionBindings = lexicalFunctionBindings
+
+lookupValueBinding :: Bindings a => Symbol -> a -> Maybe LispObject
+lookupValueBinding name bindings = M.lookup name (valueBindings bindings)
+
+lookupFunctionBinding :: Bindings a => Symbol -> a -> Maybe FunctionInfo
+lookupFunctionBinding name bindings = M.lookup name (functionBindings bindings)
+
+instance Frame LexicalFrame where
+    parentFrame = parentLexicalFrame
+
+lookupFrameValueBinding :: Frame a => Symbol -> a -> Maybe LispObject
+lookupFrameValueBinding name frame = case M.lookup name (valueBindings frame) of
+    Just obj -> Just obj
+    Nothing  -> case parentFrame frame of
+        Just parent -> lookupFrameValueBinding name parent
+        Nothing     -> Nothing
+
+lookupFrameFunctionBinding :: Frame a => Symbol -> a -> Maybe FunctionInfo
+lookupFrameFunctionBinding name frame = case M.lookup name (functionBindings frame) of
+    Just obj -> Just obj
+    Nothing  -> case parentFrame frame of
+        Just parent -> lookupFrameFunctionBinding name parent
+        Nothing     -> Nothing
+
 data SpecialFrame = SpecialFrame
-    { specialBindings    :: M.Map Symbol LispObject
-    , parentSpecialFrame :: Maybe SpecialFrame
+    { specialValueBindings    :: M.Map Symbol LispObject
+    , specialFunctionBindings :: M.Map Symbol FunctionInfo
+    , parentSpecialFrame      :: Maybe SpecialFrame
     } deriving (Show, Eq)
+
+instance Bindings SpecialFrame where
+    valueBindings = specialValueBindings
+    functionBindings = specialFunctionBindings
+
+instance Frame SpecialFrame where
+    parentFrame = parentSpecialFrame
 
 data GlobalBindings = GlobalBindings
     { globalValueBindings    :: M.Map Symbol LispObject
     , globalFunctionBindings :: M.Map Symbol FunctionInfo
     } deriving (Show, Eq)
+
+instance Bindings GlobalBindings where
+    valueBindings = globalValueBindings
+    functionBindings = globalFunctionBindings
 
 data Environment = Environment
     { globalBindings      :: GlobalBindings
@@ -78,42 +124,8 @@ emptyEnvironment :: Environment
 emptyEnvironment = Environment
     { globalBindings = GlobalBindings M.empty M.empty
     , currentLexicalFrame = LexicalFrame M.empty M.empty Nothing
-    , currentSpecialFrame = SpecialFrame M.empty Nothing
+    , currentSpecialFrame = SpecialFrame M.empty M.empty Nothing
     }
-
-lookupValueBinding :: Symbol -> Environment -> Maybe LispObject
-lookupValueBinding symbol env = do
-    case () of
-        _ | Just obj <- lookupSpecialBindings symbol env.currentSpecialFrame -> Just obj
-          | Just obj <- lookupLexicalBindings symbol env.currentLexicalFrame -> Just obj
-          | Just obj <- lookupGlobalBindings symbol env.globalBindings -> Just obj
-          | otherwise -> Nothing
-  where
-    lookupSpecialBindings name frame = case M.lookup name frame.specialBindings of
-        Just obj -> Just obj
-        Nothing  -> case frame.parentSpecialFrame of
-            Just parent -> lookupSpecialBindings name parent
-            Nothing     -> Nothing
-    lookupLexicalBindings name frame = case M.lookup name frame.valueBindings of
-        Just obj -> Just obj
-        Nothing  -> case frame.parentLexicalFrame of
-            Just parent -> lookupLexicalBindings name parent
-            Nothing     -> Nothing
-    lookupGlobalBindings name bindings = M.lookup name bindings.globalValueBindings
-
-lookupFunctinBinding :: Symbol -> Environment -> Maybe FunctionInfo
-lookupFunctinBinding symbol env = do
-    case () of
-         _| Just obj <- lookupLexicalBindings symbol env.currentLexicalFrame -> Just obj
-          | Just obj <- lookupGlobalBindings symbol env.globalBindings -> Just obj
-          | otherwise -> Nothing
-  where
-    lookupLexicalBindings name frame = case M.lookup name frame.functionBindings of
-        Just obj -> Just obj
-        Nothing  -> case frame.parentLexicalFrame of
-            Just parent -> lookupLexicalBindings name parent
-            Nothing     -> Nothing
-    lookupGlobalBindings name bindings = M.lookup name bindings.globalFunctionBindings
 
 insertGlobalValueBinding :: Symbol -> LispObject -> Environment -> Environment
 insertGlobalValueBinding name value env = env
