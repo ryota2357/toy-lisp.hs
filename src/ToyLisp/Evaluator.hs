@@ -137,12 +137,12 @@ systemFunctionBindingsMap = M.fromList
                 ) e es
       )
     , ("defun", \args -> case args of
-        SymbolNode fnPos fnName : ListNode _ params : body -> if fnName `M.member` (systemFunctionBindingsMap @m)
+        SymbolNode _ fnName : ListNode _ params : body -> if fnName `M.member` (systemFunctionBindingsMap @m)
             then pure $ Left $ "Redefining " <> unSymbol fnName <> " is not allowed"
             else case forM params (\case SymbolNode _ s -> Right s; _ -> Left ()) of
                 Right params' -> do
                     frame <- gets currentLexicalFrame
-                    let fnInfo = FunctionInfo fnPos params' (Ast body) frame
+                    let fnInfo = FunctionInfo params' (Ast body) frame
                     modify' $ RT.insertGlobalFunctionBinding fnName fnInfo
                     pure $ Right $ LispFunction fnInfo
                 Left _ -> pure $ Left "Function parameters are not a list of symbols"
