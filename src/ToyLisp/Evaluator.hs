@@ -155,7 +155,7 @@ systemFunctionBindingsMap = M.fromList
                 let display = RT.displayLispObjectWith $ \case
                         LispString s -> Just $ T.unpack s
                         _            -> Nothing
-                lift $ lift $ RT.writeOutput $ display arg
+                lift . lift $ RT.writeOutput $ display arg
                 pure $ Right arg
             _ -> pure $ Left $ mkInvalidArgCountErrorText "princ" args
       )
