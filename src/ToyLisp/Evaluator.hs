@@ -143,7 +143,9 @@ systemFunctionBindingsMap = M.fromList
                 Right params' -> do
                     frame <- gets currentLexicalFrame
                     let fnInfo = FunctionInfo params' (Ast body) frame
-                    modify' $ RT.insertGlobalFunctionBinding fnName fnInfo
+                    modify' $ \env -> env
+                        { globalBindings = RT.insertFunctionBinding fnName fnInfo env.globalBindings
+                        }
                     pure $ Right $ LispFunction fnInfo
                 Left _ -> pure $ Left "Function parameters are not a list of symbols"
         SymbolNode _ _ : invalidParam | not $ null invalidParam ->
@@ -177,7 +179,9 @@ systemFunctionBindingsMap = M.fromList
             then pure $ Left $ unSymbol sym <> " is a constant and thus cannot be set"
             else do
                 value' <- evalNode value
-                modify' $ RT.insertGlobalValueBinding sym value'
+                modify' $ \env -> env
+                    { globalBindings = RT.insertValueBinding sym value' env.globalBindings
+                    }
                 pure $ Right value'
         [_, _] -> pure $ Left "Variable name is not a symbol"
         _ -> pure $ Left $ mkInvalidArgCountErrorText "setq" args

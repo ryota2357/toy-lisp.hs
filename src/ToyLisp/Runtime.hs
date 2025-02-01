@@ -140,20 +140,6 @@ emptyEnvironment = Environment
     , currentSpecialFrame = SpecialFrame M.empty M.empty Nothing
     }
 
-insertGlobalValueBinding :: Symbol -> LispObject -> Environment -> Environment
-insertGlobalValueBinding name value env = env
-    { globalBindings = env.globalBindings
-        { globalValueBindings = M.insert name value env.globalBindings.globalValueBindings
-        }
-    }
-
-insertGlobalFunctionBinding :: Symbol -> FunctionInfo -> Environment -> Environment
-insertGlobalFunctionBinding name value env = env
-    { globalBindings = env.globalBindings
-        { globalFunctionBindings = M.insert name value env.globalBindings.globalFunctionBindings
-        }
-    }
-
 data RuntimeError = RuntimeError
     { runtimeErrorPosition :: TextRange
     , runtimeErrorMessage  :: T.Text
