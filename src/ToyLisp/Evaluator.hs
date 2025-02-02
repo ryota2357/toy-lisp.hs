@@ -7,8 +7,9 @@ module ToyLisp.Evaluator (eval) where
 import           Control.Monad        (foldM, forM)
 import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
                                        throwError)
-import           Control.Monad.State  (StateT, get, gets, lift, modify', put,
+import           Control.Monad.State  (StateT, get, gets, modify', put,
                                        runStateT)
+import           Control.Monad.Trans  (lift)
 import           Data.Function        (fix)
 import           Data.List            (uncons)
 import qualified Data.Map.Strict      as M
@@ -276,36 +277,35 @@ systemFunctionBindingsMap = M.fromList (
         args -> pure $ Left $ mkInvalidArgCountErrorText (length args) "2 or 3"
       )
     , ("let", \case
-        ListNode _ bindings : body -> do
-            case forM bindings (\case
-                    ListNode _ (SymbolNode _ sym : values) -> case uncons values of
-                        Just (value, []) -> Right (sym, Just value)
-                        Just (_, _) ->  Left $ "Binding for " <> unSymbol sym <> " is not a single value"
-                        Nothing -> Right (sym, Nothing)
-                    SymbolNode _ sym -> Right (sym, Nothing)
-                    _ -> Left "Variable name is not a symbol")
-                of
+        ListNode _ bindings : body ->
+            evalBindings bindings >>= \case
                 Left err -> pure $ Left err
                 Right bindings' -> do
-                    nextBindingMap <- M.fromList <$> forM bindings' (
-                        \(sym, value) -> (sym,) <$> case value of
-                            Just value' -> evalNode value'
-                            Nothing     -> pure $ LispList [])
                     env <- get
                     let nextEnv = env
                             { currentLexicalFrame = LexicalFrame
-                                { lexicalValueBindings = nextBindingMap
+                                { lexicalValueBindings = M.fromList bindings'
                                 , lexicalFunctionBindings = M.empty
                                 , parentLexicalFrame = Just env.currentLexicalFrame
                                 }
                             }
                     (result, nextEnv') <- lift . lift $ eval nextEnv (Ast body)
                     case result of
-                        Left err -> throwError err
+                        Left err  -> throwError err
                         Right obj -> do
                             -- Restore the environment with the updated global bindings
                             put env { globalBindings = nextEnv'.globalBindings }
                             pure $ Right obj
+              where
+                evalBindings = runExceptT . mapM (\case
+                    ListNode _ (SymbolNode _ sym : values) -> case uncons values of
+                        Just (value, []) -> do
+                            value' <- lift $ evalNode value
+                            pure (sym, value')
+                        Just (_, _) -> throwError $ "Binding for " <> unSymbol sym <> " is not a single value"
+                        Nothing -> pure (sym, LispList [])
+                    SymbolNode _ sym -> pure (sym, LispList [])
+                    _ -> throwError "Variable name is not a symbol")
         _ : _ -> pure $ Left "Bindings are not a list"
         args -> pure $ Left $ mkInvalidArgCountErrorText (length args) ">= 1"
       )
