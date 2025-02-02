@@ -13,7 +13,7 @@
 
 module ToyLisp.Parser (parse) where
 
-import           Control.Monad          (void)
+import           Control.Monad          (void, when)
 import           Control.Monad.Except   (ExceptT, MonadError, runExceptT,
                                          throwError)
 import           Control.Monad.Identity (Identity, runIdentity)
@@ -63,10 +63,10 @@ eatWhileP predicate = do
     pure token
 
 eatWhitespace :: Parser ()
-eatWhitespace = void (eatWhileP isSpace)
+eatWhitespace = void $ eatWhileP isSpace
 
 isIdentChar :: Char -> Bool
-isIdentChar c = isAscii c && notElem c [' ', '"', '(', ')', '\'']
+isIdentChar c = isAscii c && notElem c [' ', '"', '(', ')', '\'', ';']
 
 assertCurrentCharP :: (Char -> Bool) -> Parser ()
 assertCurrentCharP predicate = do
@@ -75,13 +75,23 @@ assertCurrentCharP predicate = do
     let !_ = assertAlways (predicate $ head input) ()
     pure ()
 
+skipComments :: Parser ()
+skipComments = do
+    assertCurrentCharP (== ';')
+    advance 1
+    void $ eatWhileP (/= '\n')
+    eatWhitespace
+    input <- gets input
+    when ((not . null) input && head input == ';') skipComments
+
 parseAstNodeList :: Parser [AstNode]
 parseAstNodeList = do
     eatWhitespace
-    input <- gets input
-    if null input || head input == ')'
-        then pure []
-        else do
+    gets (safeHead . input) >>= \case
+        Nothing -> pure []
+        Just ')' -> pure []
+        Just ';' -> skipComments >> parseAstNodeList
+        _ -> do
             node <- parseAstNode
             nodes <- parseAstNodeList
             pure $ node : nodes
@@ -93,6 +103,7 @@ parseAstNode = do
         Just '(' -> parseList
         Just '\'' -> parseQuote
         Just '"' -> parseString
+        Just ';' -> skipComments >> parseAstNode
         Just c | isIdentChar c -> parseIdent
         mc -> do
             curPos <- gets position

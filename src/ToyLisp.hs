@@ -60,12 +60,17 @@ runReplWith config = do
         showAstOnlyLoop
 
 data ReadSExprState = ReadSExprState
-    { parensDepth    :: Int
-    , isInsideString :: Bool
+    { parensDepth     :: Int
+    , isInsideString  :: Bool
+    , isInsideComment :: Bool
     }
 
 readSExpr :: (RT.ExecIO m) => m String
-readSExpr = readLoop "" ReadSExprState { parensDepth = 0, isInsideString = False }
+readSExpr = readLoop "" ReadSExprState
+    { parensDepth = 0
+    , isInsideString = False
+    , isInsideComment = False
+    }
   where
     readLoop currentString state = do
         inputedLine <- (++ "\n") <$> RT.readInputLine
@@ -76,9 +81,13 @@ readSExpr = readLoop "" ReadSExprState { parensDepth = 0, isInsideString = False
             else readLoop nextString nextState
     updateState state line = foldl updateByChar state $ zip (Nothing : map Just line) line
       where
-        updateByChar s (prev, cur) = case cur of
-            '(' | not s.isInsideString -> s { parensDepth = s.parensDepth + 1 }
-            ')' | not s.isInsideString -> s { parensDepth = s.parensDepth - 1 }
-            '"' | not s.isInsideString -> s { isInsideString = True }
-            '"' | prev /= Just '\\'    -> s { isInsideString = False }
-            _                          -> s
+        updateByChar s (prev, cur) = if s.isInsideComment
+            then s { isInsideComment = cur /= '\n' }
+            else
+                case cur of
+                    ';' | not s.isInsideString -> s { isInsideComment = True }
+                    '(' | not s.isInsideString -> s { parensDepth = s.parensDepth + 1 }
+                    ')' | not s.isInsideString -> s { parensDepth = s.parensDepth - 1 }
+                    '"' | not s.isInsideString -> s { isInsideString = True }
+                    '"' | prev /= Just '\\'    -> s { isInsideString = False }
+                    _                          -> s

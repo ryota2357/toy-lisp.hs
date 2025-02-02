@@ -13,6 +13,13 @@ spec = do
         it "empty input" $ do
             parse "" `shouldBe` Right (Ast [])
             parse " " `shouldBe` Right (Ast [])
+            parse "\n" `shouldBe` Right (Ast [])
+
+        it "comment" $ do
+            parse "; comment" `shouldBe` Right (Ast [])
+            parse "; comment\n" `shouldBe` Right (Ast [])
+            parse "; comment\n\n" `shouldBe` Right (Ast [])
+            parse "; comment\n\n; comment" `shouldBe` Right (Ast [])
 
         describe "symbol" $ do
             it "single letter symbols" $
@@ -103,6 +110,15 @@ spec = do
                                 SymbolNode (TextRange 4 5) "b",
                                 SymbolNode (TextRange 6 7) "c"
                             ]
+                        ]
+                    ])
+
+            it "with comments" $
+                parse "(a ;)\n b)" `shouldBe`
+                    Right (Ast [
+                        ListNode (TextRange 0 9) [
+                            SymbolNode (TextRange 1 2) "a",
+                            SymbolNode (TextRange 7 8) "b"
                         ]
                     ])
 
