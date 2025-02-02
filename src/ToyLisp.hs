@@ -52,6 +52,7 @@ runReplWith config = do
                             RT.writeOutputLn $ "← " ++ display obj
                     loop nextEnv
     showAstOnlyLoop = do
+        RT.writeOutput "> "
         input <- readSExpr
         case parse input of
             Left err  -> RT.writeErrorLn $ show err
