@@ -38,6 +38,8 @@ executable toy-lisp
   main-is:        Main.hs
   build-depends:
     , base                  ^>=4.19.2.0
+    , bytestring            ^>=0.12.1.0
+    , file-embed            ^>=0.0.16.0
     , optparse-applicative  ^>=0.18.1.0
     , toy-lisp
 

@@ -1,14 +1,23 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module ToyLisp (RunConfig (..), RunMode(..), runWith, runReplWith) where
+module ToyLisp (RunConfig (..), RunMode(..), runWith, runReplWith, PreloadScript (..)) where
 
-import           ToyLisp.Evaluator (eval)
-import           ToyLisp.Parser    (parse)
-import qualified ToyLisp.Runtime   as RT
+import           Control.Monad        (foldM)
+import           Control.Monad.Except (ExceptT, runExceptT, throwError)
+import           Control.Monad.Trans  (lift)
+import           ToyLisp.Evaluator    (eval)
+import           ToyLisp.Parser       (parse)
+import qualified ToyLisp.Runtime      as RT
 
 data RunConfig = RunConfig
-    { runMode     :: RunMode
-    , runPreloads :: [String]
+    { runMode        :: RunMode
+    , preloadScripts :: [PreloadScript]
+    }
+
+data PreloadScript = PreloadScript
+    { scriptName :: String
+    , scriptBody :: String
     }
 
 data RunMode = ExecuteProgram | ShowAstOnly
@@ -19,11 +28,13 @@ runWith config content = do
         Left err -> RT.writeErrorLn $ show err
         Right ast -> do
             case config.runMode of
-                ExecuteProgram -> do
-                    (result, _) <- eval RT.emptyEnvironment ast
-                    case result of
-                        Left err -> RT.writeErrorLn $ show err
-                        Right _  -> pure ()
+                ExecuteProgram -> loadPreloadScripts config.preloadScripts >>= \case
+                    Left err -> RT.writeErrorLn err
+                    Right env -> do
+                        (result, _) <- eval env ast
+                        case result of
+                            Left err -> RT.writeErrorLn $ show err
+                            Right _  -> pure ()
                 ShowAstOnly -> do
                     RT.writeOutputLn $ show ast
 
@@ -34,7 +45,11 @@ runReplWith config = do
         ExecuteProgram -> executeProgramLoop
         ShowAstOnly    -> showAstOnlyLoop
   where
-    executeProgramLoop = loop RT.emptyEnvironment
+    executeProgramLoop = do
+        env <- loadPreloadScripts config.preloadScripts >>= \case
+            Left err -> RT.writeErrorLn err >> pure RT.emptyEnvironment
+            Right env -> pure env
+        loop env
       where
         loop env = do
             RT.writeOutput "> "
@@ -58,6 +73,19 @@ runReplWith config = do
             Left err  -> RT.writeErrorLn $ show err
             Right ast -> RT.writeOutputLn $ show ast
         showAstOnlyLoop
+
+loadPreloadScripts :: (RT.ExecIO m) => [PreloadScript] -> m (Either String RT.Environment)
+loadPreloadScripts = runExceptT <$> foldM loadScripts RT.emptyEnvironment
+  where
+    loadScripts :: (RT.ExecIO m) => RT.Environment -> PreloadScript -> ExceptT String m RT.Environment
+    loadScripts env script = do
+      ast <- case parse (scriptBody script) of
+          Left err  -> throwError $ "Syntax error in script " ++ scriptName script ++ ": " ++ show err
+          Right ast -> pure ast
+      (result, env') <- lift $ eval env ast
+      case result of
+          Left err -> throwError $ "Runtime error in script " ++ scriptName script ++ ": " ++ show err
+          Right _  -> pure env'
 
 data ReadSExprState = ReadSExprState
     { parensDepth     :: Int
