@@ -400,17 +400,36 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             ) arg
         _ -> throwWrongNumberOfArgsError (length args) "1"
       )
-    , ("setq", \case
-        [SymbolNode _ sym, value] -> if sym `M.member` systemValueBindingsMap
-            then throwError $ unSymbol sym <> " is a constant and thus cannot be set"
-            else do
+    , ("setq", \args -> if odd (length args)
+        then throwWrongNumberOfArgsError (length args) "even number"
+        else foldM (\_ -> \case
+            (SymbolNode _ symbol, value) -> do
                 value' <- lift $ evalNode value
-                modify' $ \env -> env
-                    { globalBindings = RT.insertValueBinding sym value' env.globalBindings
-                    }
+                env <- get
+                case () of
+                    _ | Just _ <- RT.lookupFrameValueBinding symbol env.currentLexicalFrame -> put env
+                            { currentLexicalFrame = findInsert symbol value' env.currentLexicalFrame
+                            }
+                      | Just _ <- RT.lookupFrameValueBinding symbol env.currentSpecialFrame -> put env
+                            { currentSpecialFrame = findInsert symbol value' env.currentSpecialFrame
+                            }
+                      | otherwise -> put env
+                            { globalBindings = RT.insertValueBinding symbol value' env.globalBindings
+                            }
                 pure value'
-        [_, _] -> throwError "Variable name is not a symbol"
-        args -> throwWrongNumberOfArgsError (length args) "2"
+              where
+                findInsert sym obj frame = case RT.lookupValueBinding sym frame of
+                    Just _ -> RT.insertValueBinding sym obj frame
+                    Nothing -> case RT.parentFrame frame of
+                        Just parent -> findInsert sym obj parent
+                        Nothing     -> frame
+            _ -> throwError "Variable name is not a symbol")
+            (LispList [])
+            $ fix (\mkPairs -> \case
+                [] -> []
+                x : y : xs -> (x, y) : mkPairs xs
+                _ -> error "unreachable" -- We have already checked that the length is even
+            ) args
       )
     , ("type-of", \args -> do
         argValues <- lift $ mapM evalNode args

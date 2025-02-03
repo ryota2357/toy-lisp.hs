@@ -177,8 +177,13 @@ spec = do
                 let (result_f2, _, _) = runEvalWith RT.emptyEnvironment div_by_f2_zero
                 result_f2 `shouldBe` Left (RT.RuntimeError s "Division by zero")
 
-
         describe "setq ok" $ do
+            it "no arguments" $ do -- (setq)
+                let ast = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "setq"]]
+                let (result, env, _) = runEval ast
+                result `shouldBe` Right (RT.LispList [])
+                env `shouldBe` RT.emptyEnvironment
+
             it "set unbound symbol" $ do -- (setq a 42)
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", IntNode s 42]]
                 let (_, env, _) = runEval ast
@@ -199,21 +204,35 @@ spec = do
                 let (_, env, _) = runEval ast
                 M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
 
-        describe "setq error" $ do
-            it "no arguments" $ do -- (setq)
-                let ast = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "setq"]]
-                let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 0, expected 2")
+            it "set multiple values" $ do -- (setq a 1 b 2 c 3)
+                let ast = Ast [ListNode s [
+                            SymbolNode s "setq", SymbolNode s "a", IntNode s 1,
+                            SymbolNode s "b", IntNode s 2,
+                            SymbolNode s "c", IntNode s 3]]
+                let (_, env, _) = runEval ast
+                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 1)
+                M.lookup "b" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 2)
+                M.lookup "c" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
 
+            it "set multiple value by eval sequential" $ do -- (setq a 1 b (+ a 2))
+                let ast = Ast [ListNode s [
+                            SymbolNode s "setq", SymbolNode s "a", IntNode s 1,
+                            SymbolNode s "b", ListNode s [
+                                SymbolNode s "+", SymbolNode s "a", IntNode s 2]]]
+                let (_, env, _) = runEval ast
+                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 1)
+                M.lookup "b" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
+
+        describe "setq error" $ do
             it "one argument" $ do -- (setq 1)
                 let ast = Ast [ListNode (TextRange 0 8) [SymbolNode (TextRange 1 4) "setq", IntNode s 1]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 4) "Wrong number of arguments: given 1, expected 2")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 4) "Wrong number of arguments: given 1, expected even number")
 
             it "three arguments" $ do -- (setq a 1 2)
                 let ast = Ast [ListNode (TextRange 0 13) [SymbolNode (TextRange 1 5) "setq", SymbolNode s "a", IntNode s 1, IntNode s 2]]
                 let (result, _, _) = runEval ast
-                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 3, expected 2")
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 3, expected even number")
 
             it "first argument is not symbol" $ do -- (setq 1 2)
                 let ast = Ast [ListNode (TextRange 0 10) [SymbolNode (TextRange 1 5) "setq", IntNode s 1, IntNode s 2]]
