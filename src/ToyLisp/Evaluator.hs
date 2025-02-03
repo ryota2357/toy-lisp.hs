@@ -268,6 +268,49 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
         _ : _ : _ -> throwError "Function name is not a symbol"
         args -> throwWrongNumberOfArgsError (length args) ">= 2"
       )
+    , ("eq", \args -> do
+        argValues <- lift $ mapM evalNode args
+        let t =  LispTrue; nil = LispList []
+        case argValues of
+            [LispList [], LispList []] -> pure t
+            [LispList _, _] -> pure nil
+            [_, LispList _] -> pure nil
+            [LispString _, _] -> pure nil
+            [_, LispString _] -> pure nil
+            [a, b] -> pure $ if a == b then t else nil
+            _      -> throwWrongNumberOfArgsError (length args) "2"
+      )
+    , ("eql", \args -> do
+        argValues <- lift $ mapM evalNode args
+        let t =  LispTrue; nil = LispList []
+        case argValues of
+            [LispList [], LispList []] -> pure t
+            [LispList _, _] -> pure nil
+            [_, LispList _] -> pure nil
+            [a, b] -> pure $ if a == b then t else nil
+            _      -> throwWrongNumberOfArgsError (length args) "2"
+      )
+    , ("equal", \args -> do
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [a, b] -> pure $ if a == b then LispTrue else LispList []
+            _      -> throwWrongNumberOfArgsError (length args) "1"
+      )
+    , ("equalp", \args -> do
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [a, b] -> pure $
+                if fix (\equalp -> \case
+                    (LispString s1, LispString s2) -> T.toLower s1 == T.toLower s2
+                    (LispList xs, LispList ys) -> ((length xs == length ys) && all equalp (zip xs ys))
+                    (LispInt x, LispFloat y) -> fromIntegral x == y
+                    (LispFloat x, LispInt y) -> x == fromIntegral y
+                    (x, y) ->  x == y
+                ) (a, b)
+                    then LispTrue
+                    else LispList []
+            _ -> throwWrongNumberOfArgsError (length args) "2"
+      )
     , ("if", \case
         [cond, thenExpr] -> do
             condValue <- lift $ evalNode cond
