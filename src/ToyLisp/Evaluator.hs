@@ -10,6 +10,7 @@ import           Control.Monad.Except (ExceptT, MonadError, runExceptT,
 import           Control.Monad.State  (StateT, get, gets, modify', put,
                                        runStateT)
 import           Control.Monad.Trans  (lift)
+import qualified Data.Bifunctor       as BF
 import           Data.Function        (fix)
 import           Data.List            (uncons)
 import qualified Data.Map.Strict      as M
@@ -81,15 +82,20 @@ evalNode = \case
     ListNode _ (notSymbolNode : _) ->
         throwRuntimeError (astNodePosition notSymbolNode) "Function name is not a symbol"
 
+throwWrongNumberOfArgsError :: MonadError T.Text m' => Int -> String -> m' a -- m is already used
+throwWrongNumberOfArgsError given expected = throwError errorText
+  where
+    givenText = T.pack $ show given
+    expectedText = T.pack expected
+    errorText = "Wrong number of arguments: given " <> givenText <> ", expected " <> expectedText
+
 callFunction :: forall m. (ExecIO m) => FunctionInfo -> [LispObject] -> Evaluator m (Either T.Text LispObject)
 callFunction fn args =
     let argCount   = length args
         paramCount = length fn.functionParams
-    in if argCount /= paramCount
+    in runExceptT $ if argCount /= paramCount
         then
-            let argCountText  = T.pack $ "got " ++ show argCount
-                paramCountText = T.pack $ "expected " ++ show paramCount
-            in pure $ Left $ "Wrong number of arguments: got " <> argCountText <> ", expected " <> paramCountText
+            throwWrongNumberOfArgsError argCount (show paramCount)
         else do
             env <- get
             let nextEnv = env
@@ -98,13 +104,13 @@ callFunction fn args =
                         fn.functionIntialFrame
                         (zip fn.functionParams args)
                     }
-            (result, nextEnv') <- lift . lift $ eval nextEnv fn.functionBody
+            (result, nextEnv') <- lift . lift . lift $ eval nextEnv fn.functionBody
             case result of
-                Left err -> throwError err
+                Left err -> lift $ throwError err
                 Right obj  -> do
                     -- Restore the environment with the updated global bindings
                     put env { globalBindings = nextEnv'.globalBindings }
-                    pure $ Right obj
+                    pure obj
 
 systemValueBindingsMap :: M.Map Symbol LispObject
 systemValueBindingsMap = M.fromList
@@ -114,104 +120,103 @@ systemValueBindingsMap = M.fromList
     ]
 
 systemFunctionBindingsMap :: forall m. (ExecIO m) => M.Map Symbol ([AstNode] -> Evaluator m (Either T.Text LispObject))
-systemFunctionBindingsMap = M.fromList (
+systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
     [ ("+", \args -> do
-        argValues <- mapM evalNode args
-        pure $ foldM (\acc v -> case (acc, v) of
-            (LispInt a, LispInt b)     -> Right $ LispInt (a + b)
-            (LispFloat a, LispFloat b) -> Right $ LispFloat (a + b)
-            (LispInt a, LispFloat b)   -> Right $ LispFloat (fromIntegral a + b)
-            (LispFloat a, LispInt b)   -> Right $ LispFloat (a + fromIntegral b)
-            _                          -> Left "Arguments are not numbers"
+        argValues <- lift $ mapM evalNode args
+        foldM (\acc v -> case (acc, v) of
+            (LispInt a, LispInt b)     -> pure $ LispInt (a + b)
+            (LispFloat a, LispFloat b) -> pure $ LispFloat (a + b)
+            (LispInt a, LispFloat b)   -> pure $ LispFloat (fromIntegral a + b)
+            (LispFloat a, LispInt b)   -> pure $ LispFloat (a + fromIntegral b)
+            _                          -> throwError "Arguments are not numbers"
             ) (LispInt 0) argValues
       )
     , ("-", \args -> do
-        argValues <- mapM evalNode args
-        pure $ case argValues of
-            [] -> Left $ mkInvalidArgCountErrorText 0 ">= 1"
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [] -> throwWrongNumberOfArgsError 0 ">= 1"
             [e] -> case e of
-                LispInt i   -> Right $ LispInt (-i)
-                LispFloat f -> Right $ LispFloat (-f)
-                _           -> Left "Argument is not a number"
+                LispInt i   -> pure $ LispInt (-i)
+                LispFloat f -> pure $ LispFloat (-f)
+                _           -> throwError "Argument is not a number"
             e : es -> foldM (\acc v -> case (acc, v) of
-                (LispInt a, LispInt b)     -> Right $ LispInt (a - b)
-                (LispFloat a, LispFloat b) -> Right $ LispFloat (a - b)
-                (LispInt a, LispFloat b)   -> Right $ LispFloat (fromIntegral a - b)
-                (LispFloat a, LispInt b)   -> Right $ LispFloat (a - fromIntegral b)
-                _                          -> Left "Arguments are not numbers"
+                (LispInt a, LispInt b)     -> pure $ LispInt (a - b)
+                (LispFloat a, LispFloat b) -> pure $ LispFloat (a - b)
+                (LispInt a, LispFloat b)   -> pure $ LispFloat (fromIntegral a - b)
+                (LispFloat a, LispInt b)   -> pure $ LispFloat (a - fromIntegral b)
+                _                          -> throwError "Arguments are not numbers"
                 ) e es
       )
     , ("*", \args -> do
-        argValues <- mapM evalNode args
-        pure $ foldM (\acc v -> case (acc, v) of
-            (LispInt a, LispInt b)     -> Right $ LispInt (a * b)
-            (LispFloat a, LispFloat b) -> Right $ LispFloat (a * b)
-            (LispInt a, LispFloat b)   -> Right $ LispFloat (fromIntegral a * b)
-            (LispFloat a, LispInt b)   -> Right $ LispFloat (a * fromIntegral b)
-            _                          -> Left "Arguments are not numbers"
+        argValues <- lift $ mapM evalNode args
+        foldM (\acc v -> case (acc, v) of
+            (LispInt a, LispInt b)     -> pure $ LispInt (a * b)
+            (LispFloat a, LispFloat b) -> pure $ LispFloat (a * b)
+            (LispInt a, LispFloat b)   -> pure $ LispFloat (fromIntegral a * b)
+            (LispFloat a, LispInt b)   -> pure $ LispFloat (a * fromIntegral b)
+            _                          -> throwError "Arguments are not numbers"
             ) (LispInt 1) argValues
       )
     , ("/", \args -> do
-        argValues <- mapM evalNode args
+        argValues <- lift $ mapM evalNode args
         let divideByZeroMsg = "Division by zero"
-        pure $ case argValues of
-            [] -> Left $ mkInvalidArgCountErrorText 0 ">= 1"
+        case argValues of
+            [] -> throwWrongNumberOfArgsError 0 ">= 1"
             [e] -> case e of
-                LispInt 0   -> Left divideByZeroMsg
-                LispFloat 0 -> Left divideByZeroMsg
-                LispInt i   -> Right $ LispFloat (1 / fromIntegral i)
-                LispFloat f -> Right $ LispFloat (1 / f)
-                _           -> Left "Argument is not a number"
+                LispInt 0   -> throwError divideByZeroMsg
+                LispFloat 0 -> throwError divideByZeroMsg
+                LispInt i   -> pure $ LispFloat (1 / fromIntegral i)
+                LispFloat f -> pure $ LispFloat (1 / f)
+                _           -> throwError "Argument is not a number"
             e : es -> foldM (\acc v -> case (acc, v) of
-                (LispInt a, LispInt b)     | b /= 0 -> Right $ if a `mod` b == 0
+                (LispInt a, LispInt b)     | b /= 0 -> pure $ if a `mod` b == 0
                                                                 then LispInt (a `div` b)
                                                                 else LispFloat (fromIntegral a / fromIntegral b)
-                (LispFloat a, LispFloat b) | b /= 0 -> Right $ LispFloat (a / b)
-                (LispInt a, LispFloat b)   | b /= 0 -> Right $ LispFloat (fromIntegral a / b)
-                (LispFloat a, LispInt b)   | b /= 0 -> Right $ LispFloat (a / fromIntegral b)
-                (LispInt _, LispInt 0)     -> Left divideByZeroMsg
-                (LispFloat _, LispFloat 0) -> Left divideByZeroMsg
-                (LispInt _, LispFloat 0)   -> Left divideByZeroMsg
-                (LispFloat _, LispInt 0)   -> Left divideByZeroMsg
-                _                          -> Left "Arguments are not numbers"
+                (LispFloat a, LispFloat b) | b /= 0 -> pure $ LispFloat (a / b)
+                (LispInt a, LispFloat b)   | b /= 0 -> pure $ LispFloat (fromIntegral a / b)
+                (LispFloat a, LispInt b)   | b /= 0 -> pure $ LispFloat (a / fromIntegral b)
+                (LispInt _, LispInt 0)     -> throwError divideByZeroMsg
+                (LispFloat _, LispFloat 0) -> throwError divideByZeroMsg
+                (LispInt _, LispFloat 0)   -> throwError divideByZeroMsg
+                (LispFloat _, LispInt 0)   -> throwError divideByZeroMsg
+                _                          -> throwError "Arguments are not numbers"
                 ) e es
       )
     ]
     ++
     map (\(op, opI, opF) -> (op, \args -> do
-        argValues <- mapM evalNode args
-        let nil = Right $ LispList []
-        let t = Right LispTrue
-        let notNumber = Left "Argument is not a number"
-        pure $ case argValues of
-            [] -> Left $ mkInvalidArgCountErrorText 0 ">= 1"
-            [LispInt _] -> t
-            [LispFloat _] -> t
-            [_] -> notNumber
+        argValues <- lift $ mapM evalNode args
+        let t = LispTrue; nil = LispList []
+        let notNumberMsg = "Argument is not a number"
+        case argValues of
+            [] -> throwWrongNumberOfArgsError 0 ">= 1"
+            [LispInt _] -> pure t
+            [LispFloat _] -> pure t
+            [_] -> throwError notNumberMsg
             LispInt x : xs -> case () of
                 _ | Right xs' <- forM xs (\case LispInt i -> Right i; _ -> Left ()) ->
-                    if all (`opI` x) xs' then t else nil
+                    pure $ if all (`opI` x) xs' then t else nil
                   | Right xs' <- forM xs (\case LispInt i -> Right $ fromIntegral i; LispFloat f -> Right f; _ -> Left ()) ->
-                    if all (`opF` fromIntegral x) xs' then t else nil
-                  | otherwise -> notNumber
+                    pure $ if all (`opF` fromIntegral x) xs' then t else nil
+                  | otherwise -> throwError notNumberMsg
             LispFloat x : xs -> case () of
                 _ | Right xs' <- forM xs (\case LispInt i -> Right $ fromIntegral i; LispFloat f -> Right f; _ -> Left ()) ->
-                    if all (`opF` x) xs' then t else nil
-                  | otherwise -> notNumber
-            _ -> notNumber
+                    pure $ if all (`opF` x) xs' then t else nil
+                  | otherwise -> throwError notNumberMsg
+            _ -> throwError notNumberMsg
         ))
     [ ("=",  (==), (==))
     , ("/=", (/=), (/=))
     ]
     ++
     map (\(op, opI, opF) -> (op, \args -> do
-        argValues <- mapM evalNode args
-        let notNumber = Left "Argument is not a number"
-        pure $ case argValues of
-            [] -> Left $ mkInvalidArgCountErrorText 0 ">= 1"
-            [LispInt _] -> Right LispTrue
-            [LispFloat _] -> Right LispTrue
-            [_] -> notNumber
+        argValues <- lift $ mapM evalNode args
+        let notNumberMsg = "Argument is not a number"
+        case argValues of
+            [] -> throwWrongNumberOfArgsError 0 ">= 1"
+            [LispInt _] -> pure LispTrue
+            [LispFloat _] -> pure LispTrue
+            [_] -> throwError notNumberMsg
             _ : xs -> case foldM (\_ v -> case v of
                     (LispInt a, LispInt b)     -> if a `opI` b then Right () else Left True
                     (LispFloat a, LispFloat b) -> if a `opF` b then Right () else Left True
@@ -220,9 +225,9 @@ systemFunctionBindingsMap = M.fromList (
                     _ -> Left False
                     ) () $ zip argValues xs
                 of
-                    Right _    -> Right LispTrue
-                    Left True  -> Right $ LispList []
-                    Left False -> notNumber
+                    Right _    -> pure LispTrue
+                    Left True  -> pure $ LispList []
+                    Left False -> throwError notNumberMsg
         ))
     [ (">", (>), (>))
     , ("<", (<), (<))
@@ -231,24 +236,24 @@ systemFunctionBindingsMap = M.fromList (
     ]
     ++
     [ ("car", \args -> do
-        argValues <- mapM evalNode args
-        pure $ case argValues of
-            [LispList []]      -> Right $ LispList []
-            [LispList (x : _)] -> Right x
-            [_]                -> Left "Argument is not a list"
-            _                  -> Left $ mkInvalidArgCountErrorText (length args) "1"
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [LispList []]      -> pure $ LispList []
+            [LispList (x : _)] -> pure x
+            [_]                -> throwError "Argument is not a list"
+            _                  -> throwWrongNumberOfArgsError (length args) "1"
       )
     , ("cdr", \args -> do
-        argValues <- mapM evalNode args
-        pure $ case argValues of
-            [LispList []]       -> Right $ LispList []
-            [LispList (_ : xs)] -> Right $ LispList xs
-            [_]                -> Left "Argument is not a list"
-            _                  -> Left $ mkInvalidArgCountErrorText (length args) "1"
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [LispList []]       -> pure $ LispList []
+            [LispList (_ : xs)] -> pure $ LispList xs
+            [_]                 -> throwError "Argument is not a list"
+            _                   -> throwWrongNumberOfArgsError (length args) "1"
       )
     , ("defun", \case
         SymbolNode _ fnName : ListNode _ params : body -> if fnName `M.member` (systemFunctionBindingsMap @m)
-            then pure $ Left $ "Redefining " <> unSymbol fnName <> " is not allowed"
+            then throwError $ "Redefining " <> unSymbol fnName <> " is not allowed"
             else case forM params (\case SymbolNode _ s -> Right s; _ -> Left ()) of
                 Right params' -> do
                     frame <- gets currentLexicalFrame
@@ -256,120 +261,118 @@ systemFunctionBindingsMap = M.fromList (
                     modify' $ \env -> env
                         { globalBindings = RT.insertFunctionBinding fnName fnInfo env.globalBindings
                         }
-                    pure $ Right $ LispFunction fnInfo
-                Left _ -> pure $ Left "Function parameters are not a list of symbols"
+                    pure $ LispFunction fnInfo
+                Left _ -> throwError "Function parameters are not a list of symbols"
         SymbolNode _ _ : invalidParam | not $ null invalidParam ->
-            pure $ Left "Function parameters are not a list"
-        _ : _ : _ -> pure $ Left "Function name is not a symbol"
-        args -> pure $ Left $ mkInvalidArgCountErrorText (length args) ">= 2"
+            throwError "Function parameters are not a list"
+        _ : _ : _ -> throwError "Function name is not a symbol"
+        args -> throwWrongNumberOfArgsError (length args) ">= 2"
       )
     , ("if", \case
         [cond, thenExpr] -> do
-            condValue <- evalNode cond
+            condValue <- lift $ evalNode cond
             case condValue of
-                LispList [] -> pure $ Right $ LispList []
-                _           -> Right <$> evalNode thenExpr
+                LispList [] -> pure $ LispList []
+                _           -> lift $ evalNode thenExpr
         [cond, thenExpr, elseExpr] -> do
-            condValue <- evalNode cond
-            Right <$> case condValue of
+            condValue <- lift $ evalNode cond
+            lift $ case condValue of
                 LispList [] -> evalNode elseExpr
                 _           -> evalNode thenExpr
-        args -> pure $ Left $ mkInvalidArgCountErrorText (length args) "2 or 3"
+        args -> throwWrongNumberOfArgsError (length args) "2 or 3"
       )
     , ("let", \case
-        ListNode _ bindings : body ->
-            evalBindings bindings >>= \case
-                Left err -> pure $ Left err
-                Right bindings' -> do
-                    env <- get
-                    let nextEnv = env
-                            { currentLexicalFrame = LexicalFrame
-                                { lexicalValueBindings = M.fromList bindings'
-                                , lexicalFunctionBindings = M.empty
-                                , parentLexicalFrame = Just env.currentLexicalFrame
-                                }
-                            }
-                    (result, nextEnv') <- lift . lift $ eval nextEnv (Ast body)
-                    case result of
-                        Left err  -> throwError err
-                        Right obj -> do
-                            -- Restore the environment with the updated global bindings
-                            put env { globalBindings = nextEnv'.globalBindings }
-                            pure $ Right obj
-              where
-                evalBindings = runExceptT . mapM (\case
-                    ListNode _ (SymbolNode _ sym : values) -> case uncons values of
-                        Just (value, []) -> do
-                            value' <- lift $ evalNode value
-                            pure (sym, value')
-                        Just (_, _) -> throwError $ "Binding for " <> unSymbol sym <> " is not a single value"
-                        Nothing -> pure (sym, LispList [])
-                    SymbolNode _ sym -> pure (sym, LispList [])
-                    _ -> throwError "Variable name is not a symbol")
-        _ : _ -> pure $ Left "Bindings are not a list"
-        args -> pure $ Left $ mkInvalidArgCountErrorText (length args) ">= 1"
+        ListNode _ bindings : body -> do
+            bindings' <- evalBindings bindings
+            env <- get
+            let nextEnv = env
+                    { currentLexicalFrame = LexicalFrame
+                        { lexicalValueBindings = M.fromList bindings'
+                        , lexicalFunctionBindings = M.empty
+                        , parentLexicalFrame = Just env.currentLexicalFrame
+                        }
+                    }
+            (result, nextEnv') <- lift . lift . lift $ eval nextEnv (Ast body)
+            case result of
+                Left err  -> lift $ throwError err
+                Right obj -> do
+                    -- Restore the environment with the updated global bindings
+                    put env { globalBindings = nextEnv'.globalBindings }
+                    pure obj
+          where
+            evalBindings = mapM (\case
+                ListNode _ (SymbolNode _ sym : values) -> case uncons values of
+                    Just (value, []) -> do
+                        value' <- lift $ evalNode value
+                        pure (sym, value')
+                    Just (_, _) -> throwError $ "Binding for " <> unSymbol sym <> " is not a single value"
+                    Nothing -> pure (sym, LispList [])
+                SymbolNode _ sym -> pure (sym, LispList [])
+                _ -> throwError "Variable name is not a symbol")
+        _ : _ -> throwError "Bindings are not a list"
+        args -> throwWrongNumberOfArgsError (length args) ">= 1"
       )
     , ("list", \args -> do
-        argValues <- mapM evalNode args
-        pure $ Right $ LispList argValues
+        argValues <- lift $ mapM evalNode args
+        pure $ LispList argValues
       )
     , ("nthcdr", \args -> do
-        argValues <- mapM evalNode args
-        pure $ case argValues of
-            [LispInt n, LispList xs] -> Right $ LispList $ drop (fromIntegral n) xs
-            [LispInt _, _]           -> Left "Second argument is not a list"
-            [_, _]                   -> Left "First argument is not an integer"
-            _                        -> Left $ mkInvalidArgCountErrorText (length args) "2"
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [LispInt n, LispList xs] -> pure $ LispList $ drop (fromIntegral n) xs
+            [LispInt _, _]           -> throwError "Second argument is not a list"
+            [_, _]                   -> throwError "First argument is not an integer"
+            _                        -> throwWrongNumberOfArgsError (length args) "2"
       )
     , ("princ", \args -> do
-        argValues <- mapM evalNode args
+        argValues <- lift $ mapM evalNode args
         case argValues of
             [arg] -> do
                 let display = RT.displayLispObjectWith $ \case
                         LispString s -> Just $ T.unpack s
                         _            -> Nothing
-                lift . lift $ RT.writeOutput $ display arg
-                pure $ Right arg
-            _ -> pure $ Left $ mkInvalidArgCountErrorText (length args) "1"
+                lift . lift . lift $ RT.writeOutput $ display arg
+                pure  arg
+            _ -> throwWrongNumberOfArgsError (length args) "1"
       )
     , ("prog1", \args -> do
-        argValues <- mapM evalNode args
+        argValues <- lift $ mapM evalNode args
         pure $ case uncons argValues of
-            Just (first, _) -> Right first
-            Nothing         -> Right $ LispList []
+            Just (first, _) -> first
+            Nothing         -> LispList []
       )
     , ("progn", \args -> do
-        argValues <- mapM evalNode args
+        argValues <- lift $ mapM evalNode args
         pure $ case argValues of
-            [] -> Right $ LispList []
-            _  -> Right $ last argValues
+            [] -> LispList []
+            _  -> last argValues
       )
-    , ("quote", \args -> pure $ case args of
-        [arg] -> Right $ fix (\quote -> \case
+    , ("quote", \args -> case args of
+        [arg] -> pure $ fix (\quote -> \case
             IntNode _ i -> LispInt i
             FloatNode _ f -> LispFloat f
             StringNode _ s -> LispString s
             SymbolNode _ sym -> LispSymbol sym
             ListNode _ nodes -> LispList $ map quote nodes
             ) arg
-        _ -> Left $ mkInvalidArgCountErrorText (length args) "1"
+        _ -> throwWrongNumberOfArgsError (length args) "1"
       )
     , ("setq", \case
         [SymbolNode _ sym, value] -> if sym `M.member` systemValueBindingsMap
-            then pure $ Left $ unSymbol sym <> " is a constant and thus cannot be set"
+            then throwError $ unSymbol sym <> " is a constant and thus cannot be set"
             else do
-                value' <- evalNode value
+                value' <- lift $ evalNode value
                 modify' $ \env -> env
                     { globalBindings = RT.insertValueBinding sym value' env.globalBindings
                     }
-                pure $ Right value'
-        [_, _] -> pure $ Left "Variable name is not a symbol"
-        args -> pure $ Left $ mkInvalidArgCountErrorText (length args) "2"
+                pure value'
+        [_, _] -> throwError "Variable name is not a symbol"
+        args -> throwWrongNumberOfArgsError (length args) "2"
       )
     , ("type-of", \args -> do
-        argValues <- mapM evalNode args
-        pure $ case argValues of
-            [arg] -> Right $ LispSymbol $ case arg of
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [arg] -> pure $ LispSymbol $ case arg of
                     LispInt _      -> "INTEGER"
                     LispFloat _    -> "FLOAT"
                     LispString _   -> "STRING"
@@ -377,12 +380,6 @@ systemFunctionBindingsMap = M.fromList (
                     LispList _     -> "LIST"
                     LispFunction _ -> "FUNCTION"
                     LispTrue       -> "T"
-            _ -> Left $ mkInvalidArgCountErrorText (length args) "1"
+            _ -> throwWrongNumberOfArgsError (length args) "1"
       )
     ])
-  where
-    mkInvalidArgCountErrorText :: Int -> String -> T.Text
-    mkInvalidArgCountErrorText given expected = "Wrong number of arguments: given " <> givenText <> ", expected " <> expectedText
-      where
-        givenText = T.pack $ show given
-        expectedText = T.pack expected
