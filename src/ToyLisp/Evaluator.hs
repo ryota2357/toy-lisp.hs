@@ -12,8 +12,9 @@ import           Control.Monad.State  (StateT, get, gets, modify', put,
 import           Control.Monad.Trans  (lift)
 import qualified Data.Bifunctor       as BF
 import           Data.Function        (fix)
-import           Data.List            (uncons)
+import           Data.List            (partition, uncons)
 import qualified Data.Map.Strict      as M
+import           Data.Maybe           (isJust, isNothing)
 import qualified Data.Text            as T
 import qualified ToyLisp.Runtime      as RT
 import           ToyLisp.Runtime      (Environment (..), ExecIO,
@@ -361,14 +362,29 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
       )
     , ("let", \case
         ListNode _ bindings : body -> do
-            bindings' <- evalBindings bindings
             env <- get
+            (lexicalBindings, specialBindings) <- partition (\(sym, _) ->
+                -- If exits in the current lexical frame, it is a lexical binding
+                -- Else if exits in the current special frame, it is a special binding
+                -- Otherwise, it is a lexical binding
+                isJust (RT.lookupFrameValueBinding sym env.currentLexicalFrame)
+                || isNothing (RT.lookupFrameValueBinding sym env.currentSpecialFrame)
+                ) <$> evalBindings bindings
             let nextEnv = env
-                    { currentLexicalFrame = LexicalFrame
-                        { lexicalValueBindings = M.fromList bindings'
-                        , lexicalFunctionBindings = M.empty
-                        , parentLexicalFrame = Just env.currentLexicalFrame
-                        }
+                    { currentLexicalFrame = if null lexicalBindings
+                        then env.currentLexicalFrame
+                        else LexicalFrame
+                            { lexicalValueBindings = M.fromList lexicalBindings
+                            , lexicalFunctionBindings = M.empty
+                            , parentLexicalFrame = Just env.currentLexicalFrame
+                            }
+                    , currentSpecialFrame = if null specialBindings
+                        then env.currentSpecialFrame
+                        else SpecialFrame
+                            { specialValueBindings = M.fromList specialBindings
+                            , specialFunctionBindings = M.empty
+                            , parentSpecialFrame = Just env.currentSpecialFrame
+                            }
                     }
             (result, nextEnv') <- lift . lift . lift $ eval nextEnv (Ast body)
             case result of
