@@ -66,7 +66,7 @@ eatWhitespace :: Parser ()
 eatWhitespace = void $ eatWhileP isSpace
 
 isIdentChar :: Char -> Bool
-isIdentChar c = isAscii c && notElem c [' ', '"', '(', ')', '\'', ';']
+isIdentChar c = isAscii c && (not . isSpace) c && notElem c ['"', '(', ')', '\'', ';']
 
 assertCurrentCharP :: (Char -> Bool) -> Parser ()
 assertCurrentCharP predicate = do

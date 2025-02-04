@@ -32,9 +32,15 @@ spec = do
                 parse "a1b2c3" `shouldBe` Right (Ast [SymbolNode (TextRange 0 6) "a1b2c3"])
                 parse "123abc" `shouldBe` Right (Ast [SymbolNode (TextRange 0 6) "123abc"])
 
-            it "symbols with special characters" $ do
+            it "with special characters" $ do
                 parse "+-*/" `shouldBe` Right (Ast [SymbolNode (TextRange 0 4) "+-*/"])
                 parse "<=>!" `shouldBe` Right (Ast [SymbolNode (TextRange 0 4) "<=>!"])
+
+            it "endwith whitespace" $ do
+                parse "abc\n" `shouldBe` Right (Ast [SymbolNode (TextRange 0 3) "abc"])
+                parse "abc\n\n" `shouldBe` Right (Ast [SymbolNode (TextRange 0 3) "abc"])
+                parse "abc\t" `shouldBe` Right (Ast [SymbolNode (TextRange 0 3) "abc"])
+                parse "abc " `shouldBe` Right (Ast [SymbolNode (TextRange 0 3) "abc"])
 
         describe "integer" $ do
             it "zero" $
