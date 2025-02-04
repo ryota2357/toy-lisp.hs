@@ -5,7 +5,6 @@
 module EvaluatorSpec (spec) where
 
 import           Control.Monad.State (State, gets, modify, runState)
-import qualified Data.Map.Strict     as M
 import           Test.Hspec
 import           ToyLisp.Evaluator   (eval)
 import qualified ToyLisp.Runtime     as RT
@@ -187,7 +186,7 @@ spec = do
             it "set unbound symbol" $ do -- (setq a 42)
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", IntNode s 42]]
                 let (_, env, _) = runEval ast
-                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 42)
+                RT.lookupValueBinding "a" env.globalBindings `shouldBe` Just (RT.LispInt 42)
 
             it "set bound symbol" $ do -- (setq a 3.14) ; a is already bound to 3
                 let env = RT.emptyEnvironment
@@ -195,14 +194,14 @@ spec = do
                         }
                 let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", FloatNode s 3.14]]
                 let (_, env', _) = runEvalWith env ast
-                M.lookup "a" env'.globalBindings.globalValueBindings `shouldBe` Just (RT.LispFloat 3.14)
+                RT.lookupValueBinding "a" env'.globalBindings `shouldBe` Just (RT.LispFloat 3.14)
 
             it "set evaluated value" $ do
                 let ast = Ast [ListNode s [
                             SymbolNode s "setq", SymbolNode s "a", ListNode s [
                                 SymbolNode s "+", IntNode s 1, IntNode s 2]]]
                 let (_, env, _) = runEval ast
-                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
+                RT.lookupValueBinding "a" env.globalBindings `shouldBe` Just (RT.LispInt 3)
 
             it "set multiple values" $ do -- (setq a 1 b 2 c 3)
                 let ast = Ast [ListNode s [
@@ -210,9 +209,9 @@ spec = do
                             SymbolNode s "b", IntNode s 2,
                             SymbolNode s "c", IntNode s 3]]
                 let (_, env, _) = runEval ast
-                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 1)
-                M.lookup "b" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 2)
-                M.lookup "c" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
+                RT.lookupValueBinding "a" env.globalBindings `shouldBe` Just (RT.LispInt 1)
+                RT.lookupValueBinding "b" env.globalBindings `shouldBe` Just (RT.LispInt 2)
+                RT.lookupValueBinding "c" env.globalBindings `shouldBe` Just (RT.LispInt 3)
 
             it "set multiple value by eval sequential" $ do -- (setq a 1 b (+ a 2))
                 let ast = Ast [ListNode s [
@@ -220,8 +219,8 @@ spec = do
                             SymbolNode s "b", ListNode s [
                                 SymbolNode s "+", SymbolNode s "a", IntNode s 2]]]
                 let (_, env, _) = runEval ast
-                M.lookup "a" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 1)
-                M.lookup "b" env.globalBindings.globalValueBindings `shouldBe` Just (RT.LispInt 3)
+                RT.lookupValueBinding "a" env.globalBindings `shouldBe` Just (RT.LispInt 1)
+                RT.lookupValueBinding "b" env.globalBindings `shouldBe` Just (RT.LispInt 3)
 
         describe "setq error" $ do
             it "one argument" $ do -- (setq 1)
@@ -246,7 +245,7 @@ spec = do
                                 ListNode (TextRange 11 16) [SymbolNode (TextRange 12 13) "a", SymbolNode (TextRange 14 15) "b"],
                                 ListNode (TextRange 17 24) [SymbolNode (TextRange 18 19) "+", SymbolNode s "a", SymbolNode s "b"]]]
                 let (_, env, _) = runEval ast
-                M.lookup "add" env.globalBindings.globalFunctionBindings
+                RT.lookupFunctionBinding "add" env.globalBindings
                     `shouldBe`
                     Just (RT.FunctionInfo
                         { RT.functionParams = ["a", "b"]
@@ -257,7 +256,7 @@ spec = do
             it "empty body" $ do -- (defun empty ())
                 let ast = Ast [ListNode s [SymbolNode s "defun", SymbolNode s "empty", ListNode s []]]
                 let (_, env, _) = runEval ast
-                M.lookup "empty" env.globalBindings.globalFunctionBindings
+                RT.lookupFunctionBinding "empty" env.globalBindings
                     `shouldBe`
                     Just (RT.FunctionInfo
                         { RT.functionParams = []
@@ -268,7 +267,7 @@ spec = do
             it "many bodies" $ do -- (defun many () 1 2 3)
                 let ast = Ast [ListNode s [SymbolNode s "defun", SymbolNode s "many", ListNode s [], IntNode s 1, IntNode s 2, IntNode s 3]]
                 let (_, env, _) = runEval ast
-                M.lookup "many" env.globalBindings.globalFunctionBindings
+                RT.lookupFunctionBinding "many" env.globalBindings
                     `shouldBe`
                     Just (RT.FunctionInfo
                         { RT.functionParams = []
