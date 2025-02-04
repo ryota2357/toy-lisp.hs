@@ -4,11 +4,13 @@
 module ToyLisp (RunConfig (..), RunMode(..), runWith, runReplWith, PreloadScript (..)) where
 
 import           Control.Monad        (foldM)
-import           Control.Monad.Except (ExceptT, runExceptT, throwError)
+import           Control.Monad.Except (runExceptT, throwError)
 import           Control.Monad.Trans  (lift)
+import           ToyLisp.Analyzer     (validateAst)
 import           ToyLisp.Evaluator    (eval)
 import           ToyLisp.Parser       (parse)
 import qualified ToyLisp.Runtime      as RT
+import           ToyLisp.Syntax       (Ast, SyntaxError)
 
 data RunConfig = RunConfig
     { runMode        :: RunMode
@@ -24,7 +26,7 @@ data RunMode = ExecuteProgram | ShowAstOnly
 
 runWith :: (RT.ExecIO m) => RunConfig -> String -> m ()
 runWith config content = do
-    case parse content of
+    case parseValidate content of
         Left err -> RT.writeErrorLn $ show err
         Right ast -> do
             case config.runMode of
@@ -74,12 +76,18 @@ runReplWith config = do
             Right ast -> RT.writeOutputLn $ show ast
         showAstOnlyLoop
 
+parseValidate :: String -> Either SyntaxError Ast
+parseValidate input = case parse input of
+    Left err -> Left err
+    Right ast -> case validateAst ast of
+        Left err -> Left  err
+        Right _  -> Right ast
+
 loadPreloadScripts :: (RT.ExecIO m) => [PreloadScript] -> m (Either String RT.Environment)
 loadPreloadScripts = runExceptT <$> foldM loadScripts RT.emptyEnvironment
   where
-    loadScripts :: (RT.ExecIO m) => RT.Environment -> PreloadScript -> ExceptT String m RT.Environment
     loadScripts env script = do
-      ast <- case parse (scriptBody script) of
+      ast <- case parseValidate script.scriptBody of
           Left err  -> throwError $ "Syntax error in script " ++ scriptName script ++ ": " ++ show err
           Right ast -> pure ast
       (result, env') <- lift $ eval env ast
