@@ -513,6 +513,7 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
                     LispFloat _    -> "FLOAT"
                     LispString _   -> "STRING"
                     LispSymbol _   -> "SYMBOL"
+                    LispList []    -> "NULL"
                     LispList _     -> "LIST"
                     LispFunction _ -> "FUNCTION"
                     LispTrue       -> "T"
