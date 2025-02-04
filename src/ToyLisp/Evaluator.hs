@@ -237,7 +237,16 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
     , ("<=", (<=), (<=))
     ]
     ++
-    [ ("car", \args -> do
+    [ ("and", lift . fix (\next -> \case
+        [] -> pure LispTrue
+        arg : args -> do
+            value <- evalNode arg
+            if value == LispList []
+                then pure $ LispList []
+                else next args
+        )
+      )
+    , ("car", \args -> do
         argValues <- lift $ mapM evalNode args
         case argValues of
             [LispList []]      -> pure $ LispList []
@@ -417,6 +426,15 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             [LispInt _, _]           -> throwError "Second argument is not a list"
             [_, _]                   -> throwError "First argument is not an integer"
             _                        -> throwWrongNumberOfArgsError (length args) "2"
+      )
+    , ("or", lift . fix (\next -> \case
+        [] -> pure $ LispList []
+        arg : args -> do
+            value <- evalNode arg
+            if value == LispList []
+                then next args
+                else pure value
+        )
       )
     , ("princ", \args -> do
         argValues <- lift $ mapM evalNode args
