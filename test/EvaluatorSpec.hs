@@ -222,6 +222,29 @@ spec = do
                 RT.lookupValueBinding "a" env.globalBindings `shouldBe` Just (RT.LispInt 1)
                 RT.lookupValueBinding "b" env.globalBindings `shouldBe` Just (RT.LispInt 3)
 
+            it "lookup scope precedence: lexical > special > global" $ do -- (setq lex 1)
+                let env = RT.emptyEnvironment
+                        { RT.currentLexicalFrame = RT.insertValueBinding "lex" (RT.LispInt 3) RT.emptyEnvironment.currentLexicalFrame
+                        , RT.currentSpecialFrame = RT.insertValueBinding "lex" (RT.LispInt 2) RT.emptyEnvironment.currentSpecialFrame
+                        , RT.globalBindings = RT.insertValueBinding "lex" (RT.LispInt 2) RT.emptyEnvironment.globalBindings
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "lex", IntNode s 3]]
+                let (_, env', _) = runEvalWith env ast
+                RT.lookupValueBinding "lex" env'.globalBindings `shouldBe` Just (RT.LispInt 2)
+                RT.lookupValueBinding "lex" env'.currentSpecialFrame `shouldBe` Just (RT.LispInt 2)
+                RT.lookupValueBinding "lex" env'.currentLexicalFrame `shouldBe` Just (RT.LispInt 3)
+
+            it "lookup scope precedence: special > global" $ do -- (setq spe 1)
+                let env = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.insertValueBinding "lex" (RT.LispInt 2) RT.emptyEnvironment.currentSpecialFrame
+                        , RT.globalBindings = RT.insertValueBinding "lex" (RT.LispInt 2) RT.emptyEnvironment.globalBindings
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "lex", IntNode s 3]]
+                let (_, env', _) = runEvalWith env ast
+                RT.lookupValueBinding "lex" env'.globalBindings `shouldBe` Just (RT.LispInt 2)
+                RT.lookupValueBinding "lex" env'.currentSpecialFrame `shouldBe` Just (RT.LispInt 3)
+                RT.lookupValueBinding "lex" env'.currentLexicalFrame `shouldBe` Nothing
+
         describe "setq error" $ do
             it "one argument" $ do -- (setq 1)
                 let ast = Ast [ListNode (TextRange 0 8) [SymbolNode (TextRange 1 4) "setq", IntNode s 1]]
