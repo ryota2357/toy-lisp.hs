@@ -252,6 +252,22 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             [_]                 -> throwError "Argument is not a list"
             _                   -> throwWrongNumberOfArgsError (length args) "1"
       )
+    , ("defparameter", \case
+        [SymbolNode _ symbol, value] -> do
+            value' <- lift $ evalNode value
+            modify' $ \env -> env
+                { currentSpecialFrame = insertRecent symbol value' env.currentSpecialFrame
+                }
+            pure $ LispSymbol symbol
+          where
+            insertRecent sym obj frame = case RT.lookupValueBinding sym frame of
+                Just _ -> RT.insertValueBinding sym obj frame  -- Update the value
+                Nothing -> case frame.parentSpecialFrame of
+                    Just parent -> frame { parentSpecialFrame = Just $ insertRecent sym obj parent } -- Continue searching
+                    Nothing     -> RT.insertValueBinding sym obj frame -- Insert to the root frame
+        [_, _] -> throwError "Variable name is not a symbol"
+        args -> throwWrongNumberOfArgsError (length args) "2"
+      )
     , ("defun", \case
         SymbolNode _ fnName : ListNode _ params : body -> if fnName `M.member` (systemFunctionBindingsMap @m)
             then throwError $ "Redefining " <> unSymbol fnName <> " is not allowed"
@@ -268,6 +284,24 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             throwError "Function parameters are not a list"
         _ : _ : _ -> throwError "Function name is not a symbol"
         args -> throwWrongNumberOfArgsError (length args) ">= 2"
+      )
+    , ("defvar", \case
+        SymbolNode _ symbol : values | null values || length values == 1 -> do
+            value <- lift $ case uncons values of
+                Just (value, _) -> evalNode value
+                Nothing         -> pure $ LispList []
+            modify' $ \env -> env
+                { currentSpecialFrame = insertIfNotExists symbol value env.currentSpecialFrame
+                }
+            pure $ LispSymbol symbol
+          where
+            insertIfNotExists sym obj frame = case RT.lookupValueBinding sym frame of
+                Just _ -> frame  -- Do nothing if the symbol already exists
+                Nothing -> case frame.parentSpecialFrame of
+                    Just parent -> frame { parentSpecialFrame = Just $ insertIfNotExists sym obj parent } -- Continue searching
+                    Nothing     -> RT.insertValueBinding sym obj frame  -- Insert to the root frame
+        [_] -> throwError "Variable name is not a symbol"
+        args -> throwWrongNumberOfArgsError (length args) "1 or 2"
       )
     , ("eq", \args -> do
         argValues <- lift $ mapM evalNode args

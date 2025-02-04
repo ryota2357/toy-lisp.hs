@@ -338,3 +338,127 @@ spec = do
                 let ast = Ast [ListNode (TextRange 0 16) [SymbolNode (TextRange 1 5) "defun", SymbolNode s "add", ListNode s [SymbolNode s "a", IntNode s 1]]]
                 let (result, _, _) = runEval ast
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Function parameters are not a list of symbols")
+
+        describe "defparameter ok" $ do
+            it "set evaluated value" $ do -- (defparameter a (+ 1 2))
+                let ast = Ast [ListNode s [
+                            SymbolNode s "defparameter", SymbolNode s "a", ListNode s [
+                                SymbolNode s "+", IntNode s 1, IntNode s 2]]]
+                let (_, env, _) = runEval ast
+                RT.lookupValueBinding "a" env.currentSpecialFrame `shouldBe` Just (RT.LispInt 3)
+
+            it "set most parent if unbounded" $ do -- (defparameter a 1)
+                let env = mkEnv $ mkEnv RT.emptyEnvironment
+                    mkEnv parent = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.emptyEnvironment.currentSpecialFrame
+                            { RT.parentSpecialFrame = Just parent.currentSpecialFrame }
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "defparameter", SymbolNode s "a", IntNode s 1]]
+                let (_, env', _) = runEvalWith env ast
+                RT.lookupValueBinding "a" env'.currentSpecialFrame `shouldBe` Nothing
+                case RT.parentFrame env'.currentSpecialFrame of
+                    Just parent -> do
+                        RT.lookupValueBinding "a" parent `shouldBe` Nothing
+                        case RT.parentFrame parent of
+                            Just grandparent -> RT.lookupValueBinding "a" grandparent `shouldBe` Just (RT.LispInt 1)
+                            Nothing -> fail "grandparentSpecialFrame is Nothing"
+                    Nothing -> fail "parentSpecialFrame is Nothing"
+
+            it "set parent if bounded" $ do -- (defparameter a 3)
+                let env = mkEnv $ mkChild RT.emptyEnvironment
+                    mkEnv parent = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.emptyEnvironment.currentSpecialFrame
+                            { RT.parentSpecialFrame = Just parent.currentSpecialFrame }
+                        }
+                    mkChild parent = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.insertValueBinding "a" (RT.LispInt 1) parent.currentSpecialFrame
+                            { RT.parentSpecialFrame = Just parent.currentSpecialFrame }
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "defparameter", SymbolNode s "a", IntNode s 3]]
+                let (_, env', _) = runEvalWith env ast
+                RT.lookupValueBinding "a" env'.currentSpecialFrame `shouldBe` Nothing
+                case RT.parentFrame env'.currentSpecialFrame of
+                    Just parent -> do
+                        RT.lookupValueBinding "a" parent `shouldBe` Just (RT.LispInt 3)
+                        case RT.parentFrame parent of
+                            Just grandparent -> RT.lookupValueBinding "a" grandparent `shouldBe` Nothing
+                            Nothing -> fail "grandparentSpecialFrame is Nothing"
+                    Nothing -> fail "parentSpecialFrame is Nothing"
+
+        describe "defparameter error" $ do
+            it "not 2 arguments" $ do -- (defparameter), (defparameter a), (defparameter a 1 2)
+                let ast_0 = Ast [ListNode (TextRange 0 12) [SymbolNode (TextRange 1 12) "defparameter"]]
+                let ast_1 = Ast [ListNode (TextRange 0 15) [SymbolNode (TextRange 1 12) "defparameter", SymbolNode s "a"]]
+                let ast_3 = Ast [ListNode (TextRange 0 18) [SymbolNode (TextRange 1 12) "defparameter", SymbolNode s "a", IntNode s 1, IntNode s 2]]
+                let (result_0, _, _) = runEval ast_0
+                let (result_1, _, _) = runEval ast_1
+                let (result_3, _, _) = runEval ast_3
+                result_0 `shouldBe` Left (RT.RuntimeError (TextRange 1 12) "Wrong number of arguments: given 0, expected 2")
+                result_1 `shouldBe` Left (RT.RuntimeError (TextRange 1 12) "Wrong number of arguments: given 1, expected 2")
+                result_3 `shouldBe` Left (RT.RuntimeError (TextRange 1 12) "Wrong number of arguments: given 3, expected 2")
+
+            it "invalid parameter name" $ do -- (defparameter 1 2)
+                let ast = Ast [ListNode (TextRange 0 17) [SymbolNode (TextRange 1 12) "defparameter", IntNode s 1, IntNode s 2]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 12) "Variable name is not a symbol")
+
+        describe "defvar ok" $ do
+            it "only variable name" $ do -- (defparameter), (defparameter a), (defparameter a 1 2)
+                let ast = Ast [ListNode s [SymbolNode s "defvar", SymbolNode s "a"]]
+                let (_, env, _) = runEval ast
+                RT.lookupValueBinding "a" env.currentSpecialFrame `shouldBe` Just (RT.LispList [])
+
+            it "set evaluated value" $ do -- (defparameter a (+ 1 2))
+                let ast = Ast [ListNode s [
+                            SymbolNode s "defvar", SymbolNode s "a", ListNode s [
+                                SymbolNode s "+", IntNode s 1, IntNode s 2]]]
+                let (_, env, _) = runEval ast
+                RT.lookupValueBinding "a" env.currentSpecialFrame `shouldBe` Just (RT.LispInt 3)
+
+            it "set most parent if unbounded" $ do -- (defparameter a 1)
+                let env = mkEnv $ mkEnv RT.emptyEnvironment
+                    mkEnv parent = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.emptyEnvironment.currentSpecialFrame
+                            { RT.parentSpecialFrame = Just parent.currentSpecialFrame }
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "defvar", SymbolNode s "a", IntNode s 1]]
+                let (_, env', _) = runEvalWith env ast
+                RT.lookupValueBinding "a" env'.currentSpecialFrame `shouldBe` Nothing
+                case RT.parentFrame env'.currentSpecialFrame of
+                    Just parent -> do
+                        RT.lookupValueBinding "a" parent `shouldBe` Nothing
+                        case RT.parentFrame parent of
+                            Just grandparent -> RT.lookupValueBinding "a" grandparent `shouldBe` Just (RT.LispInt 1)
+                            Nothing -> fail "grandparentSpecialFrame is Nothing"
+                    Nothing -> fail "parentSpecialFrame is Nothing"
+
+            it "do nothing if bounded" $ do -- (defparameter a 3)
+                let env = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.insertValueBinding "a" (RT.LispInt 2) RT.emptyEnvironment.currentSpecialFrame
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "defvar", SymbolNode s "a", IntNode s 3]]
+                let (_, env', _) = runEvalWith env ast
+                env `shouldBe` env'
+
+            it "do nothing if bounded in parent" $ do -- (defparameter a 3)
+                let env = mkEnv $ mkChild RT.emptyEnvironment
+                    mkEnv parent = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.insertValueBinding "a" (RT.LispInt 1) parent.currentSpecialFrame
+                            { RT.parentSpecialFrame = Just parent.currentSpecialFrame }
+                        }
+                    mkChild parent = RT.emptyEnvironment
+                        { RT.currentSpecialFrame = RT.emptyEnvironment.currentSpecialFrame
+                            { RT.parentSpecialFrame = Just parent.currentSpecialFrame }
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "defvar", SymbolNode s "a", IntNode s 3]]
+                let (_, env', _) = runEvalWith env ast
+                env `shouldBe` env'
+
+        describe "defvar error" $ do
+            it "not 1 or 2 arguments" $ do -- (defvar), (defvar a 1 2)
+                let ast_0 = Ast [ListNode (TextRange 0 6) [SymbolNode (TextRange 1 5) "defvar"]]
+                let ast_3 = Ast [ListNode (TextRange 0 15) [SymbolNode (TextRange 1 5) "defvar", SymbolNode s "a", IntNode s 1, IntNode s 2]]
+                let (result_0, _, _) = runEval ast_0
+                let (result_3, _, _) = runEval ast_3
+                result_0 `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 0, expected 1 or 2")
+                result_3 `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 3, expected 1 or 2")
