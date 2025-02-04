@@ -302,7 +302,7 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             [a, b] -> pure $
                 if fix (\equalp -> \case
                     (LispString s1, LispString s2) -> T.toLower s1 == T.toLower s2
-                    (LispList xs, LispList ys) -> ((length xs == length ys) && all equalp (zip xs ys))
+                    (LispList xs, LispList ys) -> (length xs == length ys && all equalp (zip xs ys))
                     (LispInt x, LispFloat y) -> fromIntegral x == y
                     (LispFloat x, LispInt y) -> x == fromIntegral y
                     (x, y) ->  x == y
