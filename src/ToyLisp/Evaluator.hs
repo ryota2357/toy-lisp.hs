@@ -18,7 +18,8 @@ import qualified Data.Text            as T
 import qualified ToyLisp.Runtime      as RT
 import           ToyLisp.Runtime      (Environment (..), ExecIO,
                                        FunctionInfo (..), LexicalFrame (..),
-                                       LispObject (..), RuntimeError (..))
+                                       LispObject (..), RuntimeError (..),
+                                       SpecialFrame (..))
 import           ToyLisp.Syntax       (Ast (..), AstNode (..), Symbol,
                                        TextRange, astNodePosition, unSymbol)
 
@@ -408,20 +409,25 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
                 env <- get
                 case () of
                     _ | Just _ <- RT.lookupFrameValueBinding symbol env.currentLexicalFrame -> put env
-                            { currentLexicalFrame = findInsert symbol value' env.currentLexicalFrame
+                            { currentLexicalFrame = findInsertL symbol value' env.currentLexicalFrame
                             }
                       | Just _ <- RT.lookupFrameValueBinding symbol env.currentSpecialFrame -> put env
-                            { currentSpecialFrame = findInsert symbol value' env.currentSpecialFrame
+                            { currentSpecialFrame = findInsertS symbol value' env.currentSpecialFrame
                             }
                       | otherwise -> put env
                             { globalBindings = RT.insertValueBinding symbol value' env.globalBindings
                             }
                 pure value'
               where
-                findInsert sym obj frame = case RT.lookupValueBinding sym frame of
+                findInsertL sym obj frame = case RT.lookupValueBinding sym frame of
                     Just _ -> RT.insertValueBinding sym obj frame
-                    Nothing -> case RT.parentFrame frame of
-                        Just parent -> findInsert sym obj parent
+                    Nothing -> case frame.parentLexicalFrame of
+                        Just parent -> frame { parentLexicalFrame = Just $ findInsertL sym obj parent }
+                        Nothing     -> frame
+                findInsertS sym obj frame = case RT.lookupValueBinding sym frame of
+                    Just _ -> RT.insertValueBinding sym obj frame
+                    Nothing -> case frame.parentSpecialFrame of
+                        Just parent -> frame { parentSpecialFrame = Just $ findInsertS sym obj parent }
                         Nothing     -> frame
             _ -> throwError "Variable name is not a symbol")
             (LispList [])

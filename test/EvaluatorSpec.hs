@@ -245,6 +245,21 @@ spec = do
                 RT.lookupValueBinding "lex" env'.currentSpecialFrame `shouldBe` Just (RT.LispInt 3)
                 RT.lookupValueBinding "lex" env'.currentLexicalFrame `shouldBe` Nothing
 
+            it "set to parent lexical frame" $ do -- (setq a 1)
+                let env = mkEnv RT.emptyEnvironment
+                        { RT.currentLexicalFrame = RT.insertValueBinding "a" (RT.LispInt 2) RT.emptyEnvironment.currentLexicalFrame
+                        }
+                    mkEnv parent = RT.emptyEnvironment
+                        { RT.currentLexicalFrame = RT.emptyEnvironment.currentLexicalFrame
+                            { RT.parentLexicalFrame = Just parent.currentLexicalFrame }
+                        }
+                let ast = Ast [ListNode s [SymbolNode s "setq", SymbolNode s "a", IntNode s 1]]
+                let (_, env', _) = runEvalWith env ast
+                RT.lookupValueBinding "a" env'.currentLexicalFrame `shouldBe` Nothing
+                case RT.parentFrame env'.currentLexicalFrame of
+                    Just parent -> RT.lookupValueBinding "a" parent `shouldBe` Just (RT.LispInt 1)
+                    Nothing -> fail "parentSpecialFrame is Nothing"
+
         describe "setq error" $ do
             it "one argument" $ do -- (setq 1)
                 let ast = Ast [ListNode (TextRange 0 8) [SymbolNode (TextRange 1 4) "setq", IntNode s 1]]
