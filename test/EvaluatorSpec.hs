@@ -276,6 +276,11 @@ spec = do
                 let (result, _, _) = runEval ast
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Variable name is not a symbol")
 
+            it "redefine built-in function" $ do -- (setq t 1)
+                let ast = Ast [ListNode (TextRange 0 19) [SymbolNode (TextRange 1 5) "setq", SymbolNode s "t", IntNode s 1]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Redefining T is not allowed")
+
         describe "defun ok" $ do
             it "simple function" $ do -- (defun add (a b) (+ a b))
                 let ast = Ast [ListNode (TextRange 0 25) [
@@ -338,6 +343,11 @@ spec = do
                 let ast = Ast [ListNode (TextRange 0 16) [SymbolNode (TextRange 1 5) "defun", SymbolNode s "add", ListNode s [SymbolNode s "a", IntNode s 1]]]
                 let (result, _, _) = runEval ast
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Function parameters are not a list of symbols")
+
+            it "redefine built-in function" $ do -- (defun princ ())
+                let ast = Ast [ListNode (TextRange 0 16) [SymbolNode (TextRange 1 6) "defun", SymbolNode s "princ", ListNode s []]]
+                let (result, _, _) = runEval ast
+                result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Redefining PRINC is not allowed")
 
         describe "defparameter ok" $ do
             it "set evaluated value" $ do -- (defparameter a (+ 1 2))

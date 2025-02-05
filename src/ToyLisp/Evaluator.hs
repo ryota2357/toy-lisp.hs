@@ -472,31 +472,33 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
     , ("setq", \args -> if odd (length args)
         then throwWrongNumberOfArgsError (length args) "even number"
         else foldM (\_ -> \case
-            (SymbolNode _ symbol, value) -> do
-                value' <- lift $ evalNode value
-                env <- get
-                case () of
-                    _ | Just _ <- RT.lookupFrameValueBinding symbol env.currentLexicalFrame -> put env
-                            { currentLexicalFrame = findInsertL symbol value' env.currentLexicalFrame
-                            }
-                      | Just _ <- RT.lookupFrameValueBinding symbol env.currentSpecialFrame -> put env
-                            { currentSpecialFrame = findInsertS symbol value' env.currentSpecialFrame
-                            }
-                      | otherwise -> put env
-                            { globalBindings = RT.insertValueBinding symbol value' env.globalBindings
-                            }
-                pure value'
-              where
-                findInsertL sym obj frame = case RT.lookupValueBinding sym frame of
-                    Just _ -> RT.insertValueBinding sym obj frame
-                    Nothing -> case frame.parentLexicalFrame of
-                        Just parent -> frame { parentLexicalFrame = Just $ findInsertL sym obj parent }
-                        Nothing     -> frame
-                findInsertS sym obj frame = case RT.lookupValueBinding sym frame of
-                    Just _ -> RT.insertValueBinding sym obj frame
-                    Nothing -> case frame.parentSpecialFrame of
-                        Just parent -> frame { parentSpecialFrame = Just $ findInsertS sym obj parent }
-                        Nothing     -> frame
+            (SymbolNode _ symbol, value) -> if symbol `M.member` systemValueBindingsMap
+                then throwError $ "Redefining " <> unSymbol symbol <> " is not allowed"
+                else do
+                    value' <- lift $ evalNode value
+                    env <- get
+                    case () of
+                        _ | Just _ <- RT.lookupFrameValueBinding symbol env.currentLexicalFrame -> put env
+                                { currentLexicalFrame = findInsertL symbol value' env.currentLexicalFrame
+                                }
+                          | Just _ <- RT.lookupFrameValueBinding symbol env.currentSpecialFrame -> put env
+                                { currentSpecialFrame = findInsertS symbol value' env.currentSpecialFrame
+                                }
+                          | otherwise -> put env
+                                { globalBindings = RT.insertValueBinding symbol value' env.globalBindings
+                                }
+                    pure value'
+                  where
+                    findInsertL sym obj frame = case RT.lookupValueBinding sym frame of
+                        Just _ -> RT.insertValueBinding sym obj frame
+                        Nothing -> case frame.parentLexicalFrame of
+                            Just parent -> frame { parentLexicalFrame = Just $ findInsertL sym obj parent }
+                            Nothing     -> frame
+                    findInsertS sym obj frame = case RT.lookupValueBinding sym frame of
+                        Just _ -> RT.insertValueBinding sym obj frame
+                        Nothing -> case frame.parentSpecialFrame of
+                            Just parent -> frame { parentSpecialFrame = Just $ findInsertS sym obj parent }
+                            Nothing     -> frame
             _ -> throwError "Variable name is not a symbol")
             (LispList [])
             $ fix (\mkPairs -> \case
