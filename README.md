@@ -2,6 +2,66 @@
 
 Learning Haskell by implementing a (Common) Lisp interpreter.
 
+## Quick Start
+
+This project is managed using [Nix](https://nixos.org/).
+While it can be used as a standard Cabal (Haskell) project, using Nix (with flakes enabled) is highly recommended.
+For development, `devShell` provides a convenient environment, and [nix-direnv](https://github.com/nix-community/nix-direnv) can further enhance the experience.
+
+### Build & Run
+
+If using Nix, you do not need to install `cabal`, `ghc`, or any additional dependencies.
+Building and running can be done entirely with Nix (without requiring `devShell` or `nix-direnv`).
+
+To build, use `nix build`, which generates the binary inside the `result` directory:
+
+```console
+$ nix build
+
+$ ./result/bin/toy-lisp
+ToyLisp REPL
+>
+```
+
+To execute a script file, pass the file path using the `--script` option:
+
+```console
+$ ./result/bin/toy-lisp --script [YourFilePath]
+```
+
+### Using devShell
+
+For development, using `devShell` is more convenient.
+
+The `cabal` command is available in `devShell`, allowing you to build and run the project with:
+
+```console
+$ cabal run
+ToyLisp REPL
+>
+```
+
+Similarly, to execute a script file, use the `--script` option.
+However, it cannot be passed directly to `cabal run`; instead, use:
+
+```console
+$ cabal run toy-lisp -- --script [YourFilePath]
+```
+
+### Installation
+
+You can install `toy-lisp` using the Nix profile system.
+
+Run the following command in the same directory as `flake.nix`:
+
+```console
+$ nix profile install .
+
+$ toy-lisp
+ToyLisp REPL
+>
+```
+
 ## Syntax
 
 `toy-lisp` follows a basic Lisp syntax, similar to Scheme and Common Lisp.
