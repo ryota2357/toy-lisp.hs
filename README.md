@@ -67,12 +67,12 @@ ToyLisp REPL
 `toy-lisp` follows a basic Lisp syntax, similar to Scheme and Common Lisp.
 It supports S-expressions using parentheses (`(` and `)`), strings enclosed in double quotes (`"`), quoting with `'`, as well as integers and floating-point numbers.
 
-However, as this project is primarily for learning Haskell, certain syntactic features are unsupported.
+However, since this project is primarily for learning Haskell, certain syntactic features are unsupported.
 
 ### Identifiers
 
 Identifiers are used as variable names or symbols.
-Only ASCII characters are allowed in' toy-lisp', excluding whitespace, `"`, `'`, and certain other symbols.
+Only ASCII characters are allowed in `toy-lisp`, excluding whitespace, `"`, `'`, and certain other symbols.
 
 **Invalid Example:**
 
@@ -89,7 +89,7 @@ Only ASCII characters are allowed in' toy-lisp', excluding whitespace, `"`, `'`,
 
 ### Comments
 
-Only single-line comments using `;` are supported.
+Only single-line comments using `;` are supported:
 
 ```lisp
 ; This is a single-line comment
@@ -100,8 +100,8 @@ Only single-line comments using `;` are supported.
 `toy-lisp` does not support character types, only strings.
 
 Strings are enclosed in double quotes (`"`).
-The only supported escape sequence is `\"` (double quote escape). 
-Other backslash sequences are not treated as escapes but are interpreted as literal characters.
+The only supported escape sequence is `\"` (escaped double quote).
+Other backslash sequences are not treated as escapes and are interpreted as literal characters.
 
 ```lisp
 (princ "This is a string with a \"quote\" inside.")
@@ -111,7 +111,7 @@ Second line")
 
 ### Numbers (Integers and Floats)
 
-Numbers are parsed using Haskell’s `Text.Read` module (`readMaybe`). 
+Numbers are parsed using Haskell’s `Text.Read` module (`readMaybe`).
 This means `1e9` notation is supported, but leading-dot decimals like `.12` are not.
 
 ```lisp
@@ -121,7 +121,7 @@ This means `1e9` notation is supported, but leading-dot decimals like `.12` are 
 
 ### Quote (`'`)
 
-Lists and symbols can be quoted using `'`. 
+Lists and symbols can be quoted using `'`.
 The parser expands `'` expressions, e.g., `'a` becomes `(quote a)`, and `'(1 2 3)` becomes `(quote (1 2 3))`.
 
 ```lisp
@@ -142,7 +142,7 @@ The parser expands `'` expressions, e.g., `'a` becomes `(quote a)`, and `'(1 2 3
 - Function
 - T
 
-Similar to Common Lisp, `'()` is equivalent to `nil`. 
+Similar to Common Lisp, `'()` is equivalent to `nil`.
 These types can be inspected using the `type-of` function.
 
 ### Notes
@@ -152,29 +152,89 @@ These types can be inspected using the `type-of` function.
 
 ## Functions
 
-A subset of functions defined in Common Lisp is available.
-Each function is implemented to be as close as possible to its ANSI Common Lisp definition.
+A subset of Common Lisp functions is available.
+Each function is implemented as closely as possible to the ANSI Common Lisp definition, referencing SBCL’s behavior.
 
 There are two types of functions provided in `toy-lisp`:
 
 1. Functions implemented in Haskell.
-2. Functions defined in app/prelude.lisp.
-
-The reason for this split is simply for convenience—implementing everything in Haskell would be cumbersome.
-The loading of [app/prelude.lisp](app/prelude.lisp) can be disabled using the `--no-prelude` command-line argument.
+2. Functions defined in `app/prelude.lisp`.
 
 ### Functions Implemented in Haskell
 
-The implementation can be found in [src/ToyLisp/Evaluator.hs](src/ToyLisp/Evaluator.hs) under `systemFunctionBindingsMap`.
+The implementation can be found in [`src/ToyLisp/Evaluator.hs`](src/ToyLisp/Evaluator.hs) under `systemFunctionBindingsMap`.
 
-| Function Name | Arguments | Description | 
-| :--    | :---     | :--- |
-|        |          |      |
+`toy-lisp` does not support defining functions with variable-length arguments, so such functions must be implemented in Haskell.
+
+<details>
+<summary>Click to expand the list of functions</summary>
+
+- `*`
+- `+`
+- `-`
+- `/`
+- `/=`
+- `<`
+- `<=`
+- `=`
+- `>`
+- `>=`
+- `and`
+- `car`
+- `cdr`
+- `defparameter`
+- `defun`
+- `defvar`
+- `eq`
+- `eql`
+- `equal`
+- `equalp`
+- `if`
+- `let`
+- `list`
+- `nthcdr`
+- `or`
+- `princ`
+- `prog1`
+- `progn`
+- `quote`
+- `setq`
+- `type-of`
+
+</details>
 
 ### Functions in prelude.lisp
 
-The implementation can be found in [app/prelude.lisp](app/prelude.lisp).
+The implementation can be found in [`app/prelude.lisp`](app/prelude.lisp).
 
-| Function Name | Arguments | Description | 
-| :--    | :---     | :--- |
-|        |          |      |
+The loading of this file can be disabled using the `--no-prelude` command-line argument.
+
+<details>
+<summary>Click to expand the list of functions</summary>
+
+- `print`
+- `terpri`
+- `not`
+- `null`
+- `atom`
+- `listp`
+- `first`
+- `second`
+- `third`
+- `fourth`
+- `fifth`
+- `sixth`
+- `seventh`
+- `eighth`
+- `ninth`
+- `tenth`
+- `nth`
+- `rest`
+- `last`
+- Various `car`/`cdr` compositions (`caar`, `cadr`, ..., `cddddr`)
+
+</details>
+
+## Reference
+
+- [Common Lisp Community Spec (CLCS)](https://cl-community-spec.github.io/pages/index.html)
