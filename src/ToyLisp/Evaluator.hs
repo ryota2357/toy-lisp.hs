@@ -356,6 +356,59 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
                     else LispList []
             _ -> throwWrongNumberOfArgsError (length args) "2"
       )
+    , ("funcall", \case
+        fnIndirect : args -> (lift . evalNode) fnIndirect >>= \case
+            LispFunction fn -> do
+                argValues <- lift $ mapM evalNode args
+                result <- lift $ callFunction fn argValues
+                case result of
+                    Right val -> pure val
+                    Left err  -> throwError err
+            LispSystemFunction fnName -> do
+                case M.lookup fnName (systemFunctionBindingsMap @m) of
+                    Just fn -> do
+                        result <- lift $ fn args
+                        case result of
+                            Right val -> pure val
+                            Left err  -> throwError err
+                    Nothing ->
+                        -- LispSystemFunction is created by the system such as `function` function.
+                        -- The prosess of creating LispSystemFunction ensures that the function is exist,
+                        -- so if we reach here, it is an bug.
+                        error "unreachable: LispSystemFunction should be defined in systemFunctionBindingsMap"
+            LispSymbol symbol -> case M.lookup symbol (systemFunctionBindingsMap @m) of
+                Just fn -> do
+                    result <- lift $ fn args
+                    case result of
+                        Right val -> pure val
+                        Left err  -> throwError err
+                Nothing -> do
+                    -- Since the global function may be defined/updated in the arguments possition,
+                    -- We need to evaluate the arguments first
+                    argValues <- lift $ mapM evalNode args
+                    globals <- gets globalBindings -- Get the updated global bindings
+                    case RT.lookupFunctionBinding symbol globals of
+                        Just fn -> do
+                            result <- lift $ callFunction fn argValues
+                            case result of
+                                Right val -> pure val
+                                Left err  -> throwError err
+                        Nothing -> throwError $ "Undefined global function: " <> unSymbol symbol
+            _ -> throwError "Argument is not a function"
+        [] -> throwWrongNumberOfArgsError 0 ">= 1"
+      )
+    , ("function", \case
+        [SymbolNode _ fnName] -> do
+            env <- get
+            case () of
+                _ | Just _  <- M.lookup fnName (systemFunctionBindingsMap @m) -> pure $ LispSystemFunction fnName
+                  | Just fn <- RT.lookupFrameFunctionBinding fnName env.currentLexicalFrame -> pure $ LispFunction fn
+                  | Just fn <- RT.lookupFrameFunctionBinding fnName env.currentSpecialFrame -> pure $ LispFunction fn
+                  | Just fn <- RT.lookupFunctionBinding fnName env.globalBindings -> pure $ LispFunction fn
+                  | otherwise -> throwError $ "Undefined function: " <> unSymbol fnName
+        [lambda@(ListNode _ (SymbolNode _ "lambda" : _))] -> lift $ evalNode lambda
+        _ -> throwError "Function name is not a symbol"
+      )
     , ("if", \case
         [cond, thenExpr] -> do
             condValue <- lift $ evalNode cond
@@ -368,6 +421,16 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
                 LispList [] -> evalNode elseExpr
                 _           -> evalNode thenExpr
         args -> throwWrongNumberOfArgsError (length args) "2 or 3"
+      )
+    , ("lambda", \case
+        ListNode _ params : body ->
+            case forM params (\case SymbolNode _ s -> Right s; _ -> Left ()) of
+                Right params' -> do
+                    frame <- gets currentLexicalFrame
+                    pure $ LispFunction $ FunctionInfo params' (Ast body) frame
+                Left _ -> throwError "Function parameters are not a list of symbols"
+        _ : _ -> throwError "Function parameters are not a list"
+        args -> throwWrongNumberOfArgsError (length args) ">= 1"
       )
     , ("let", \case
         ListNode _ bindings : body -> do
@@ -511,14 +574,15 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
         argValues <- lift $ mapM evalNode args
         case argValues of
             [arg] -> pure $ LispSymbol $ case arg of
-                    LispInt _      -> "INTEGER"
-                    LispFloat _    -> "FLOAT"
-                    LispString _   -> "STRING"
-                    LispSymbol _   -> "SYMBOL"
-                    LispList []    -> "NULL"
-                    LispList _     -> "LIST"
-                    LispFunction _ -> "FUNCTION"
-                    LispTrue       -> "T"
+                    LispInt _            -> "INTEGER"
+                    LispFloat _          -> "FLOAT"
+                    LispString _         -> "STRING"
+                    LispSymbol _         -> "SYMBOL"
+                    LispList []          -> "NULL"
+                    LispList _           -> "LIST"
+                    LispFunction _       -> "FUNCTION"
+                    LispTrue             -> "T"
+                    LispSystemFunction _ -> "FUNCTION"
             _ -> throwWrongNumberOfArgsError (length args) "1"
       )
     ])

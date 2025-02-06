@@ -29,6 +29,7 @@ data LispObject
     | LispSymbol Symbol
     | LispList [LispObject]
     | LispFunction FunctionInfo
+    | LispSystemFunction Symbol
     | LispTrue
     deriving (Show, Eq)
 
@@ -44,6 +45,7 @@ displayLispObjectWith override obj = case override obj of
         LispList xs    -> "(" ++ unwords (map (displayLispObjectWith override) xs) ++ ")"
         LispTrue       -> "T"
         LispFunction _ -> "<function>"
+        LispSystemFunction name -> "<function " ++ T.unpack (unSymbol name) ++ ">"
 
 data FunctionInfo = FunctionInfo
     { functionParams      :: [Symbol]

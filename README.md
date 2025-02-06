@@ -189,7 +189,10 @@ The implementation can be found in [`src/ToyLisp/Evaluator.hs`](src/ToyLisp/Eval
 - `eql`
 - `equal`
 - `equalp`
+- `funcall`
+- `function`
 - `if`
+- `lambda`
 - `let`
 - `list`
 - `nthcdr`

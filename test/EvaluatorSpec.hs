@@ -474,3 +474,18 @@ spec = do
                 let (result_3, _, _) = runEval ast_3
                 result_0 `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 0, expected 1 or 2")
                 result_3 `shouldBe` Left (RT.RuntimeError (TextRange 1 5) "Wrong number of arguments: given 3, expected 1 or 2")
+
+        describe "function ok" $ do
+            it "passed lambda" $ do -- (function (lambda (a b) (+ a b)))
+                let ast = Ast [ListNode s [
+                            SymbolNode s "function", ListNode s [
+                                SymbolNode s "lambda", ListNode s [
+                                    SymbolNode s "a", SymbolNode s "b"], ListNode s [
+                                    SymbolNode s "+", SymbolNode s "a", SymbolNode s "b"]]]]
+                let (result, env, _) = runEval ast
+                env `shouldBe` RT.emptyEnvironment
+                result `shouldBe` Right (RT.LispFunction RT.FunctionInfo
+                        { RT.functionParams = ["a", "b"]
+                        , RT.functionBody = Ast [ListNode s [SymbolNode s "+", SymbolNode s "a", SymbolNode s "b"]]
+                        , RT.functionIntialFrame = env.currentLexicalFrame
+                        })
