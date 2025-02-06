@@ -189,32 +189,32 @@ spec = do
                         (Right m, Right r) -> pure (m, r)
                         _ -> fail $ "mod: " ++ show result_mod ++ ", rem: " ++ show result_rem
 
-            it "(mod -1 5) ⇒ 4  (rem -1 5) ⇒ -1" $ do
+            it "(mod -1 5) → 4  (rem -1 5) → -1" $ do
                 (result_mod, result_rem) <- run (IntNode s (-1)) (IntNode s 5)
                 result_mod `shouldBe` RT.LispInt 4
                 result_rem `shouldBe` RT.LispInt (-1)
 
-            it "(mod 13 4) ⇒ 1  (rem 13 4) ⇒ 1" $ do
+            it "(mod 13 4) → 1  (rem 13 4) → 1" $ do
                 (result_mod, result_rem) <- run (IntNode s 13) (IntNode s 4)
                 result_mod `shouldBe` RT.LispInt 1
                 result_rem `shouldBe` RT.LispInt 1
 
-            it "(mod -13 4) ⇒ 3  (rem -13 4) ⇒ -1" $ do
+            it "(mod -13 4) → 3  (rem -13 4) → -1" $ do
                 (result_mod, result_rem) <- run (IntNode s (-13)) (IntNode s 4)
                 result_mod `shouldBe` RT.LispInt 3
                 result_rem `shouldBe` RT.LispInt (-1)
 
-            it "(mod 13 -4) ⇒ -3  (rem 13 -4) ⇒ 1" $ do
+            it "(mod 13 -4) → -3  (rem 13 -4) → 1" $ do
                 (result_mod, result_rem) <- run (IntNode s 13) (IntNode s (-4))
                 result_mod `shouldBe` RT.LispInt (-3)
                 result_rem `shouldBe` RT.LispInt 1
 
-            it "(mod -13 -4) ⇒ -1  (rem -13 -4) ⇒ -1" $ do
+            it "(mod -13 -4) → -1  (rem -13 -4) → -1" $ do
                 (result_mod, result_rem) <- run (IntNode s (-13)) (IntNode s (-4))
                 result_mod `shouldBe` RT.LispInt (-1)
                 result_rem `shouldBe` RT.LispInt (-1)
 
-            it "(mod 13.4 1) ⇒ 0.4  (rem 13.4 1) ⇒ 0.4" $ do
+            it "(mod 13.4 1) → 0.4  (rem 13.4 1) → 0.4" $ do
                 (result_mod, result_rem) <- run (FloatNode s 13.4) (IntNode s 1)
                 case (result_mod, result_rem) of
                     (RT.LispFloat m, RT.LispFloat r) -> do
@@ -222,7 +222,7 @@ spec = do
                         abs (r - 0.4) < 0.000001 `shouldBe` True
                     _ -> fail $ "mod: " ++ show result_mod ++ ", rem: " ++ show result_rem
 
-            it "(mod -13.4 1) ⇒ 0.6  (rem -13.4 1) ⇒ -0.4" $ do
+            it "(mod -13.4 1) → 0.6  (rem -13.4 1) → -0.4" $ do
                 (result_mod, result_rem) <- run (FloatNode s (-13.4)) (IntNode s 1)
                 case (result_mod, result_rem) of
                     (RT.LispFloat m, RT.LispFloat r) -> do
