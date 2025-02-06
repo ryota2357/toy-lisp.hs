@@ -133,13 +133,13 @@ The parser expands `'` expressions, e.g., `'a` becomes `(quote a)`, and `'(1 2 3
 
 `toy-lisp` supports the following data types (with corresponding Haskell representations in parentheses):
 
-- Integer (`Integer`)
-- Float (`Double`)
-- String (`String`)
-- Symbol (a `newtype` wrapper around `Text`)
-- Null (`[]`)
-- List (`[a]`)
-- Function
+- INTEGER (`Integer`)
+- FLOAT (`Double`)
+- STRING (`String`)
+- SYMBOL (a `newtype` wrapper around `Text`)
+- NULL (`[]`)
+- LIST (`[a]`)
+- FUNCTION
 - T
 
 Similar to Common Lisp, `'()` is equivalent to `nil`.
