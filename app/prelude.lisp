@@ -1,6 +1,12 @@
 (defun print (x)
   (terpri)
-  (princ x))
+  (if (eq (type-of x) 'string)
+    (progn
+      (princ "\"")
+      (princ x)
+      (princ "\"")
+      x)
+    (princ x)))
 
 (defun terpri ()
   (princ "
