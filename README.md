@@ -182,6 +182,7 @@ The implementation can be found in [`src/ToyLisp/Evaluator.hs`](src/ToyLisp/Eval
 - `and`
 - `car`
 - `cdr`
+- `cond`
 - `defparameter`
 - `defun`
 - `defvar`
@@ -195,12 +196,14 @@ The implementation can be found in [`src/ToyLisp/Evaluator.hs`](src/ToyLisp/Eval
 - `lambda`
 - `let`
 - `list`
+- `mod`
 - `nthcdr`
 - `or`
 - `princ`
 - `prog1`
 - `progn`
 - `quote`
+- `rem`
 - `setq`
 - `type-of`
 

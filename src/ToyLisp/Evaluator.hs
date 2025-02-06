@@ -262,6 +262,17 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             [_]                 -> throwError "Argument is not a list"
             _                   -> throwWrongNumberOfArgsError (length args) "1"
       )
+    , ("cond", fix (\next -> \case
+        [] -> pure $ LispList []
+        ListNode _ (cond : thenExprs) : clauses -> do
+            condValue <- lift $ evalNode cond
+            case (condValue, thenExprs) of
+                (LispList [], _) -> next clauses
+                (_, [])          -> pure condValue
+                _                -> last <$> mapM (lift . evalNode) thenExprs
+        _ -> throwError "The clause is not a list"
+        )
+      )
     , ("defparameter", \case
         [SymbolNode _ symbol, value] -> do
             value' <- lift $ evalNode value
@@ -482,6 +493,16 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
         argValues <- lift $ mapM evalNode args
         pure $ LispList argValues
       )
+    , ("mod", \args -> do
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [LispInt a, LispInt b] -> pure $ LispInt (a `mod` b)
+            [LispFloat a, LispFloat b] -> pure $ LispFloat (a - b * fromInteger (floor (a / b)))
+            [LispInt a, LispFloat b] -> pure $ LispFloat (fromIntegral a - b * fromInteger (floor (fromIntegral a / b)))
+            [LispFloat a, LispInt b] -> pure $ LispFloat (a - fromIntegral b * fromInteger (floor (a / fromIntegral b)))
+            [_, _]                 -> throwError "Arguments are not numbers"
+            _                      -> throwWrongNumberOfArgsError (length args) "2"
+      )
     , ("nthcdr", \args -> do
         argValues <- lift $ mapM evalNode args
         case argValues of
@@ -531,6 +552,16 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             ListNode _ nodes -> LispList $ map quote nodes
             ) arg
         _ -> throwWrongNumberOfArgsError (length args) "1"
+      )
+    , ("rem", \args -> do
+        argValues <- lift $ mapM evalNode args
+        case argValues of
+            [LispInt a, LispInt b] -> pure $ LispInt (a `rem` b)
+            [LispFloat a, LispFloat b] -> pure $ LispFloat (a - b * fromInteger (truncate (a / b)))
+            [LispInt a, LispFloat b] -> pure $ LispFloat (fromIntegral a - b * fromInteger (truncate (fromIntegral a / b)))
+            [LispFloat a, LispInt b] -> pure $ LispFloat (a - fromIntegral b * fromInteger (truncate (a / fromIntegral b)))
+            [_, _]                 -> throwError "Arguments are not numbers"
+            _                      -> throwWrongNumberOfArgsError (length args) "2"
       )
     , ("setq", \args -> if odd (length args)
         then throwWrongNumberOfArgsError (length args) "even number"

@@ -112,7 +112,7 @@ spec = do
         describe "arithmetic operations" $ do
             let runEvalResultOk ast = let (result, _, _) = runEval ast in case result of
                  Right x -> x
-                 Left e -> error $ "Expected Right but got Left: " ++ show e
+                 Left e  -> error $ "Expected Right but got Left: " ++ show e
 
             it "addition" $ do
                 let ast_0 = Ast [ListNode s [SymbolNode s "+"]]
@@ -177,6 +177,58 @@ spec = do
                 let div_by_f2_zero = Ast [ListNode s [SymbolNode s "/", FloatNode s 2, FloatNode s 0]]
                 let (result_f2, _, _) = runEvalWith RT.emptyEnvironment div_by_f2_zero
                 result_f2 `shouldBe` Left (RT.RuntimeError s "Division by zero")
+
+        describe "mod & rem" $ do
+            -- Test case is "Example" in https://cl-community-spec.github.io/pages/f_mod.html
+            let run a0 a1 = do
+                    let ast_mod = Ast [ListNode s [SymbolNode s "mod", a0, a1]]
+                    let ast_rem = Ast [ListNode s [SymbolNode s "rem", a0, a1]]
+                    let (result_mod, _, _) = runEval ast_mod
+                    let (result_rem, _, _) = runEval ast_rem
+                    case (result_mod, result_rem) of
+                        (Right m, Right r) -> pure (m, r)
+                        _ -> fail $ "mod: " ++ show result_mod ++ ", rem: " ++ show result_rem
+
+            it "(mod -1 5) ⇒ 4  (rem -1 5) ⇒ -1" $ do
+                (result_mod, result_rem) <- run (IntNode s (-1)) (IntNode s 5)
+                result_mod `shouldBe` RT.LispInt 4
+                result_rem `shouldBe` RT.LispInt (-1)
+
+            it "(mod 13 4) ⇒ 1  (rem 13 4) ⇒ 1" $ do
+                (result_mod, result_rem) <- run (IntNode s 13) (IntNode s 4)
+                result_mod `shouldBe` RT.LispInt 1
+                result_rem `shouldBe` RT.LispInt 1
+
+            it "(mod -13 4) ⇒ 3  (rem -13 4) ⇒ -1" $ do
+                (result_mod, result_rem) <- run (IntNode s (-13)) (IntNode s 4)
+                result_mod `shouldBe` RT.LispInt 3
+                result_rem `shouldBe` RT.LispInt (-1)
+
+            it "(mod 13 -4) ⇒ -3  (rem 13 -4) ⇒ 1" $ do
+                (result_mod, result_rem) <- run (IntNode s 13) (IntNode s (-4))
+                result_mod `shouldBe` RT.LispInt (-3)
+                result_rem `shouldBe` RT.LispInt 1
+
+            it "(mod -13 -4) ⇒ -1  (rem -13 -4) ⇒ -1" $ do
+                (result_mod, result_rem) <- run (IntNode s (-13)) (IntNode s (-4))
+                result_mod `shouldBe` RT.LispInt (-1)
+                result_rem `shouldBe` RT.LispInt (-1)
+
+            it "(mod 13.4 1) ⇒ 0.4  (rem 13.4 1) ⇒ 0.4" $ do
+                (result_mod, result_rem) <- run (FloatNode s 13.4) (IntNode s 1)
+                case (result_mod, result_rem) of
+                    (RT.LispFloat m, RT.LispFloat r) -> do
+                        abs (m - 0.4) < 0.000001 `shouldBe` True
+                        abs (r - 0.4) < 0.000001 `shouldBe` True
+                    _ -> fail $ "mod: " ++ show result_mod ++ ", rem: " ++ show result_rem
+
+            it "(mod -13.4 1) ⇒ 0.6  (rem -13.4 1) ⇒ -0.4" $ do
+                (result_mod, result_rem) <- run (FloatNode s (-13.4)) (IntNode s 1)
+                case (result_mod, result_rem) of
+                    (RT.LispFloat m, RT.LispFloat r) -> do
+                        abs (m - 0.6) < 0.000001 `shouldBe` True
+                        abs (r + 0.4) < 0.000001 `shouldBe` True
+                    _ -> fail $ "mod: " ++ show result_mod ++ ", rem: " ++ show result_rem
 
         describe "setq ok" $ do
             it "no arguments" $ do -- (setq)
