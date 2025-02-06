@@ -40,7 +40,7 @@ type Evaluator m = ExceptT RuntimeError (StateT Environment m)
 throwRuntimeError :: MonadError RuntimeError m => TextRange -> T.Text -> m a
 throwRuntimeError pos msg = throwError $ RuntimeError pos msg
 
-evalNode :: forall m. (ExecIO m) => AstNode -> Evaluator m LispObject
+evalNode :: (ExecIO m) => AstNode -> Evaluator m LispObject
 evalNode = \case
     IntNode _ i -> pure $ LispInt i
     FloatNode _ f -> pure $ LispFloat f
@@ -55,7 +55,7 @@ evalNode = \case
               | otherwise -> throwRuntimeError pos $ "Unbound symbol: " <> unSymbol sym
     ListNode _ [] -> pure $ LispList []
     ListNode _ (SymbolNode fnPos fnName : args) ->
-        case M.lookup fnName (systemFunctionBindingsMap @m) of
+        case M.lookup fnName systemFunctionBindingsMap of
             Just fn -> do
                 result <- fn args
                 case result of
@@ -81,6 +81,18 @@ evalNode = \case
                                     Right val -> pure val
                                     Left err  -> throwRuntimeError fnPos err
                             Nothing -> throwRuntimeError fnPos $ "Undefined function: " <> unSymbol fnName
+    ListNode _ (ListNode _ (SymbolNode lambdaPos "lambda" : lambdaArgs) : args) -> do
+        let lambdaFn = systemFunctionBindingsMap M.! "lambda"
+        lambda <- lambdaFn lambdaArgs
+        case lambda of
+            Right (LispFunction fn) -> do
+                argValues <- mapM evalNode args
+                result <- callFunction fn argValues
+                case result of
+                    Right val -> pure val
+                    Left err  -> throwRuntimeError lambdaPos err
+            Right _ -> error "unreachable: lambda function should return a function"
+            Left err -> throwRuntimeError lambdaPos err
     ListNode _ (notSymbolNode : _) ->
         throwRuntimeError (astNodePosition notSymbolNode) "Function name is not a symbol"
 
