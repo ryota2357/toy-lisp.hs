@@ -43,8 +43,8 @@ displayLispObjectWith override obj = case override obj of
         LispSymbol s   -> T.unpack $ unSymbol s
         LispList []    -> "NIL"
         LispList xs    -> "(" ++ unwords (map (displayLispObjectWith override) xs) ++ ")"
+        LispFunction f -> "<function (" ++ unwords (map (T.unpack . unSymbol) f.functionParams) ++ ")>"
         LispTrue       -> "T"
-        LispFunction _ -> "<function>"
         LispSystemFunction name -> "<function " ++ T.unpack (unSymbol name) ++ ">"
 
 data FunctionInfo = FunctionInfo
