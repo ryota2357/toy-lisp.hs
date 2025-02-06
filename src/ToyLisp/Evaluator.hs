@@ -71,7 +71,8 @@ evalNode = \case
                             Right val -> pure val
                             Left err  -> throwRuntimeError fnPos err
                     Nothing -> do
-                        -- Evaluate arguments first because the global function may be defined/updated by the arguments themselves
+                        -- Since the global function may be defined/updated in the arguments possition,
+                        -- We need to evaluate the arguments first
                         argValues <- mapM evalNode args
                         globals <- gets globalBindings -- Get the updated global bindings
                         case RT.lookupFunctionBinding fnName globals of
@@ -567,8 +568,8 @@ systemFunctionBindingsMap = M.fromList $ map (BF.second (runExceptT <$>)) (
             $ fix (\mkPairs -> \case
                 [] -> []
                 x : y : xs -> (x, y) : mkPairs xs
-                _ -> error "unreachable" -- We have already checked that the length is even
-            ) args
+                _ -> error "unreachable" -- We have already checked the length of `args` is even
+                ) args
       )
     , ("type-of", \args -> do
         argValues <- lift $ mapM evalNode args
