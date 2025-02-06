@@ -110,69 +110,71 @@ spec = do
                 result `shouldBe` Left (RT.RuntimeError (TextRange 1 6) "Wrong number of arguments: given 2, expected 1")
 
         describe "arithmetic operations" $ do
-            let princAst node = Ast [ListNode s [SymbolNode s "princ", node]]
+            let runEvalResultOk ast = let (result, _, _) = runEval ast in case result of
+                 Right x -> x
+                 Left e -> error $ "Expected Right but got Left: " ++ show e
 
             it "addition" $ do
-                let ast_0 = princAst $ ListNode s [SymbolNode s "+"]
-                runEvalOutput ast_0 `shouldBe` "0"
-                let ast_i1 = princAst $ ListNode s [SymbolNode s "+", IntNode s 3]
-                runEvalOutput ast_i1 `shouldBe` "3"
-                let ast_f1 = princAst $ ListNode s [SymbolNode s "+", FloatNode s 3.14]
-                runEvalOutput ast_f1 `shouldBe` "3.14"
-                let ast_is = princAst $ ListNode s [SymbolNode s "+", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]
-                runEvalOutput ast_is `shouldBe` "10"
-                let ast_mixed = princAst $ ListNode s [SymbolNode s "+", IntNode s 1, FloatNode s 2.5]
-                runEvalOutput ast_mixed `shouldBe` "3.5"
+                let ast_0 = Ast [ListNode s [SymbolNode s "+"]]
+                runEvalResultOk ast_0 `shouldBe` RT.LispInt 0
+                let ast_i1 = Ast [ListNode s [SymbolNode s "+", IntNode s 3]]
+                runEvalResultOk ast_i1 `shouldBe` RT.LispInt 3
+                let ast_f1 = Ast [ListNode s [SymbolNode s "+", FloatNode s 3.14]]
+                runEvalResultOk ast_f1 `shouldBe` RT.LispFloat 3.14
+                let ast_is = Ast [ListNode s [SymbolNode s "+", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]]
+                runEvalResultOk ast_is `shouldBe` RT.LispInt 10
+                let ast_mixed = Ast [ListNode s [SymbolNode s "+", IntNode s 1, FloatNode s 2.5]]
+                runEvalResultOk ast_mixed `shouldBe` RT.LispFloat 3.5
 
             it "subtraction" $ do
-                let ast_0 = princAst $ ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "-"] -- (princ (-))
+                let ast_0 = Ast [ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "-"]] -- (princ (-))
                 let (result, _, _) = runEvalWith RT.emptyEnvironment ast_0
                 result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Wrong number of arguments: given 0, expected >= 1")
-                let ast_i1 = princAst $ ListNode s [SymbolNode s "-", IntNode s 2]
-                runEvalOutput ast_i1 `shouldBe` "-2"
-                let ast_f1 = princAst $ ListNode s [SymbolNode s "-", FloatNode s 2.71]
-                runEvalOutput ast_f1 `shouldBe` "-2.71"
-                let ast_is = princAst $ ListNode s [SymbolNode s "-", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]
-                runEvalOutput ast_is `shouldBe` "-8"
-                let ast_mixed = princAst $ ListNode s [SymbolNode s "-", IntNode s 2, FloatNode s 2.5]
-                runEvalOutput ast_mixed `shouldBe` "-0.5"
+                let ast_i1 = Ast [ListNode s [SymbolNode s "-", IntNode s 2]]
+                runEvalResultOk ast_i1 `shouldBe` RT.LispInt (-2)
+                let ast_f1 = Ast [ListNode s [SymbolNode s "-", FloatNode s 2.71]]
+                runEvalResultOk ast_f1 `shouldBe` RT.LispFloat (-2.71)
+                let ast_is = Ast [ListNode s [SymbolNode s "-", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]]
+                runEvalResultOk ast_is `shouldBe` RT.LispInt (-8)
+                let ast_mixed = Ast [ListNode s [SymbolNode s "-", IntNode s 2, FloatNode s 2.5]]
+                runEvalResultOk ast_mixed `shouldBe` RT.LispFloat (-0.5)
 
             it "multiplication" $ do
-                let ast_0 = princAst $ ListNode s [SymbolNode s "*"]
-                runEvalOutput ast_0 `shouldBe` "1"
-                let ast_i1 = princAst $ ListNode s [SymbolNode s "*", IntNode s 3]
-                runEvalOutput ast_i1 `shouldBe` "3"
-                let ast_f1 = princAst $ ListNode s [SymbolNode s "*", FloatNode s 3.14]
-                runEvalOutput ast_f1 `shouldBe` "3.14"
-                let ast_is = princAst $ ListNode s [SymbolNode s "*", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]
-                runEvalOutput ast_is `shouldBe` "24"
-                let ast_mixed = princAst $ ListNode s [SymbolNode s "*", IntNode s 2, FloatNode s 2.5]
-                runEvalOutput ast_mixed `shouldBe` "5.0"
+                let ast_0 = Ast [ListNode s [SymbolNode s "*"]]
+                runEvalResultOk ast_0 `shouldBe` RT.LispInt 1
+                let ast_i1 = Ast [ListNode s [SymbolNode s "*", IntNode s 3]]
+                runEvalResultOk ast_i1 `shouldBe` RT.LispInt 3
+                let ast_f1 = Ast [ListNode s [SymbolNode s "*", FloatNode s 3.14]]
+                runEvalResultOk ast_f1 `shouldBe` RT.LispFloat 3.14
+                let ast_is = Ast [ListNode s [SymbolNode s "*", IntNode s 1, IntNode s 2, IntNode s 3, IntNode s 4]]
+                runEvalResultOk ast_is `shouldBe` RT.LispInt 24
+                let ast_mixed = Ast [ListNode s [SymbolNode s "*", IntNode s 2, FloatNode s 2.5]]
+                runEvalResultOk ast_mixed `shouldBe` RT.LispFloat 5
 
             it "division" $ do
-                let ast_0 = princAst $ ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "/"] -- (princ (/))
+                let ast_0 = Ast [ListNode (TextRange 7 10) [SymbolNode (TextRange 8 9) "/"]] -- (princ (/))
                 let (result, _, _) = runEvalWith RT.emptyEnvironment ast_0
                 result `shouldBe` Left (RT.RuntimeError (TextRange 8 9) "Wrong number of arguments: given 0, expected >= 1")
-                let ast_i1 = princAst $ ListNode s [SymbolNode s "/", IntNode s 2]
-                runEvalOutput ast_i1 `shouldBe` "0.5"
-                let ast_f1 = princAst $ ListNode s [SymbolNode s "/", FloatNode s 4]
-                runEvalOutput ast_f1 `shouldBe` "0.25"
-                let ast_is = princAst $ ListNode s [SymbolNode s "/", IntNode s 8, IntNode s 2, IntNode s 4]
-                runEvalOutput ast_is `shouldBe` "1"
-                let ast_mixed = princAst $ ListNode s [SymbolNode s "/", IntNode s 2, FloatNode s 2.5]
-                runEvalOutput ast_mixed `shouldBe` "0.8"
+                let ast_i1 = Ast [ListNode s [SymbolNode s "/", IntNode s 2]]
+                runEvalResultOk ast_i1 `shouldBe` RT.LispFloat 0.5
+                let ast_f1 = Ast [ListNode s [SymbolNode s "/", FloatNode s 4]]
+                runEvalResultOk ast_f1 `shouldBe` RT.LispFloat 0.25
+                let ast_is = Ast [ListNode s [SymbolNode s "/", IntNode s 8, IntNode s 2, IntNode s 4]]
+                runEvalResultOk ast_is `shouldBe` RT.LispInt 1
+                let ast_mixed = Ast [ListNode s [SymbolNode s "/", IntNode s 2, FloatNode s 2.5]]
+                runEvalResultOk ast_mixed `shouldBe` RT.LispFloat 0.8
 
             it "division by zero" $ do
-                let div_by_i1_zero = princAst $ ListNode s [SymbolNode s "/", IntNode s 0]
+                let div_by_i1_zero = Ast [ListNode s [SymbolNode s "/", IntNode s 0]]
                 let (result_i1, _, _) = runEvalWith RT.emptyEnvironment div_by_i1_zero
                 result_i1 `shouldBe` Left (RT.RuntimeError s "Division by zero")
-                let div_by_f1_zero = princAst $ ListNode s [SymbolNode s "/", FloatNode s 0]
+                let div_by_f1_zero = Ast [ListNode s [SymbolNode s "/", FloatNode s 0]]
                 let (result_f1, _, _) = runEvalWith RT.emptyEnvironment div_by_f1_zero
                 result_f1 `shouldBe` Left (RT.RuntimeError s "Division by zero")
-                let div_by_i2_zero = princAst $ ListNode s [SymbolNode s "/", IntNode s 2, IntNode s 0]
+                let div_by_i2_zero = Ast [ListNode s [SymbolNode s "/", IntNode s 2, IntNode s 0]]
                 let (result_i2, _, _) = runEvalWith RT.emptyEnvironment div_by_i2_zero
                 result_i2 `shouldBe` Left (RT.RuntimeError s "Division by zero")
-                let div_by_f2_zero = princAst $ ListNode s [SymbolNode s "/", FloatNode s 2, FloatNode s 0]
+                let div_by_f2_zero = Ast [ListNode s [SymbolNode s "/", FloatNode s 2, FloatNode s 0]]
                 let (result_f2, _, _) = runEvalWith RT.emptyEnvironment div_by_f2_zero
                 result_f2 `shouldBe` Left (RT.RuntimeError s "Division by zero")
 
