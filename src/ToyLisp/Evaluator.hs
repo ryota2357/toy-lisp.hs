@@ -62,19 +62,18 @@ evalNode = \case
                     Right val -> pure val
                     Left err  -> throwRuntimeError fnPos err
             Nothing -> do
+                -- Since the function may be defined/updated in the arguments possition,
+                -- We need to evaluate the arguments first
+                argValues <- mapM evalNode args
                 lexicalFrame <- gets currentLexicalFrame
                 case RT.lookupFrameFunctionBinding fnName lexicalFrame of
                     Just fnInfo -> do
-                        argValues <- mapM evalNode args
                         result <- callFunction fnInfo argValues
                         case result of
                             Right val -> pure val
                             Left err  -> throwRuntimeError fnPos err
                     Nothing -> do
-                        -- Since the global function may be defined/updated in the arguments possition,
-                        -- We need to evaluate the arguments first
-                        argValues <- mapM evalNode args
-                        globals <- gets globalBindings -- Get the updated global bindings
+                        globals <- gets globalBindings
                         case RT.lookupFunctionBinding fnName globals of
                             Just fnInfo -> do
                                 result <- callFunction fnInfo argValues
