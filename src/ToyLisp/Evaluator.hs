@@ -91,7 +91,7 @@ throwWrongNumberOfArgsError given expected = throwError errorText
     expectedText = T.pack expected
     errorText = "Wrong number of arguments: given " <> givenText <> ", expected " <> expectedText
 
-callFunction :: forall m. (ExecIO m) => FunctionInfo -> [LispObject] -> Evaluator m (Either T.Text LispObject)
+callFunction :: (ExecIO m) => FunctionInfo -> [LispObject] -> Evaluator m (Either T.Text LispObject)
 callFunction fn args =
     let argCount   = length args
         paramCount = length fn.functionParams

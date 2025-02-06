@@ -33,7 +33,7 @@ instance Show Symbol where
     show = ("Symbol " ++) . T.unpack . unSymbol
 
 mkSymbol :: T.Text -> Symbol
-mkSymbol text = MkSymbolFromUpperText $ T.toUpper text
+mkSymbol = MkSymbolFromUpperText . T.toUpper
 
 unSymbol :: Symbol -> T.Text
 unSymbol (MkSymbolFromUpperText text) = text
