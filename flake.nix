@@ -38,7 +38,7 @@
               postInstall = ''
                 if ${lib.boolToString (stdenv.buildPlatform.canExecute stdenv.hostPlatform)}; then
                   TOY_LISP="$out/bin/toy-lisp"
-                  PATCH_FISH_COMP_SCRIPT="complete -c toy-lisp -n '__fish_prev_arg_in --script' -a '(__fish_complete_path)'"
+                  PATCH_FISH_COMP_SCRIPT="complete -c toy-lisp -n '__fish_prev_arg_in --script' -a '(__fish_complete_suffix .lisp)'"
                   PATCH_ZSH_COMP_SCRIPT="_files" # How to patch zsh completion script only after --script option?
                   installShellCompletion --cmd toy-lisp \
                     --bash <("$TOY_LISP" --bash-completion-script "$TOY_LISP") \
